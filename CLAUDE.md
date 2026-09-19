@@ -64,8 +64,8 @@ under `store/`; `tool/static_server.dart` is a tiny static file server
 used to serve `build/web` locally (see `.claude/launch.json`).
 
 Widget tests use Flutter's fake clock: `tester.pump(Duration)` advances
-Snake ticks (240ms each by default). The first apple is 4 cells ahead of
-the starting snake, so a score of `00010` appears after about 960ms of
+Snake ticks (190ms each by default). The first apple is 4 cells ahead of
+the starting snake, so a score of `00010` appears after about 760ms of
 pumped time.
 
 ### CI (`.github/workflows/ci.yaml`)

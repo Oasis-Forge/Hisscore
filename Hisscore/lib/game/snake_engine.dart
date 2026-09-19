@@ -83,7 +83,7 @@ class SnakeEngine {
     this.rows = 20,
     this.initialLength = 3,
     this.pointsPerFood = 10,
-    this.initialTick = const Duration(milliseconds: 240),
+    this.initialTick = const Duration(milliseconds: 190),
     this.minTick = const Duration(milliseconds: 90),
     this.firstFoodDistance = 4,
     this.mode = GameMode.classic,
@@ -475,7 +475,7 @@ class SnakeEngine {
   }
 
   void _recalculateSpeed() {
-    var baseMs = initialTick.inMilliseconds - (foodsEaten ~/ 4) * 12;
+    var baseMs = initialTick.inMilliseconds - (foodsEaten ~/ 4) * 10;
     baseMs = baseMs.clamp(minTick.inMilliseconds, initialTick.inMilliseconds);
 
     // Adventure mode speed multiplier.

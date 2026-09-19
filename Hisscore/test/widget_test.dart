@@ -101,7 +101,7 @@ void main() {
     await tester.tap(find.text('PLAY'));
     await tester.pump();
 
-    // First apple is 4 cells ahead; ticks are 240ms.
+    // First apple is 4 cells ahead; ticks are 190ms.
     await tester.pump(const Duration(milliseconds: 1100));
     final score = tester.widget<Text>(find.byKey(const Key('score-SCORE')));
     expect(score.data, '00010');
