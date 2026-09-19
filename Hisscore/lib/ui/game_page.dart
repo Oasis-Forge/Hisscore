@@ -101,6 +101,19 @@ class _GamePageState extends State<GamePage>
   DateTime? _levelFlashAt;
   static const _levelFlashDuration = Duration(milliseconds: 420);
 
+  /// When the run ended, for the red flash that fades out after it.
+  DateTime? _deathFlashAt;
+  static const _deathFlashDuration = Duration(milliseconds: 500);
+
+  double get _deathFlashOpacity {
+    final at = _deathFlashAt;
+    if (at == null) return 0;
+    final elapsed = DateTime.now().difference(at).inMilliseconds;
+    final total = _deathFlashDuration.inMilliseconds;
+    if (elapsed >= total) return 0;
+    return 1.0 - elapsed / total;
+  }
+
   /// 1.0 right after a level advance, fading to 0.
   double get _levelFlashOpacity {
     final at = _levelFlashAt;
@@ -404,6 +417,7 @@ class _GamePageState extends State<GamePage>
           ticker?.cancel();
           _emitDeathParticles();
           shakeController.shake(intensity: 8);
+          _deathFlashAt = DateTime.now();
           unawaited(soundManager.playGameOver());
           unawaited(_persistGameEnd());
         }
@@ -1028,12 +1042,25 @@ class _GamePageState extends State<GamePage>
                 fullBleed: true,
               ),
             ),
-            // Level-up flash, over the board but under the popups.
+            // Level-up: the screen edges pulse amber, over the board but
+            // under the popups. An edge glow rather than a full-screen
+            // flash, so the snake stays readable while it plays.
             if (_levelFlashOpacity > 0)
               IgnorePointer(
-                child: Opacity(
-                  opacity: _levelFlashOpacity * 0.5,
-                  child: const ColoredBox(color: RetroColors.levelFlash),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      radius: 0.95,
+                      colors: [
+                        Colors.transparent,
+                        RetroColors.amber.withValues(
+                          alpha: 0.6 * _levelFlashOpacity,
+                        ),
+                      ],
+                      stops: const [0.55, 1.0],
+                    ),
+                  ),
+                  child: const SizedBox.expand(),
                 ),
               ),
             for (final label in floatingLabels)
@@ -1051,6 +1078,16 @@ class _GamePageState extends State<GamePage>
                 onShare: _shareScore,
                 onResume: _onPrimary,
                 onExitToMenu: _onExitToMenu,
+              ),
+            // Death: a quick red flash before the game-over card settles in.
+            if (_deathFlashOpacity > 0)
+              IgnorePointer(
+                child: ColoredBox(
+                  color: RetroColors.cherry.withValues(
+                    alpha: 0.4 * _deathFlashOpacity,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
               ),
           ],
         );

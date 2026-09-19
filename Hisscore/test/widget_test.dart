@@ -7,6 +7,7 @@ import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/snake_engine.dart';
 import 'package:hisscore/main.dart';
 import 'package:hisscore/ui/board.dart';
+import 'package:hisscore/ui/theme.dart';
 
 void main() {
   // ═══════════════════════════════════════════════════
@@ -174,6 +175,18 @@ void main() {
     expect(find.text('GAME OVER'), findsOneWidget);
     expect(find.text('PLAY AGAIN'), findsOneWidget);
     expect(find.text('SHARE SCORE'), findsOneWidget);
+
+    // The red death flash is up while the run has just ended.
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is ColoredBox &&
+            w.color.a > 0 &&
+            (w.color.toARGB32() & 0xFFFFFF) ==
+                (RetroColors.cherry.toARGB32() & 0xFFFFFF),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('PLAY AGAIN'));
     await tester.pump();
