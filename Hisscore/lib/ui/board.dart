@@ -363,12 +363,13 @@ class SnakeBoardPainter extends CustomPainter {
     }
   }
 
-  /// Screen fill and grid — identical every frame for a given size.
   /// Adventure changes zone as levels climb; everything else is the grid.
   BoardBackdrop get _backdrop => engine.mode == GameMode.adventure
       ? BoardBackdrop.forLevel(engine.level)
       : BoardBackdrop.grid;
 
+  /// Screen fill and grid (or zone art) — identical every frame for a
+  /// given size, so it is cached.
   void _paintBackdrop(Canvas canvas, Size size) =>
       _backdrop.paint(canvas, size, engine.columns, engine.rows);
 
@@ -544,22 +545,40 @@ class SnakeBoardPainter extends CustomPainter {
     canvas.drawPath(path, Paint()..color = color);
   }
 
-  /// Short streaks trailing the head while a speed burst is active.
+  /// Short streaks trailing off the tail while a speed burst is active, so
+  /// they read as the snake leaving speed lines behind it rather than
+  /// smearing across its own body.
   void _paintSpeedStreaks(Canvas canvas, double cellW, double cellH) {
-    final head = _segmentRect(0, cellW, cellH).center;
-    final d = engine.direction.delta;
-    if (d.x == 0 && d.y == 0) return;
-    // Perpendicular to travel, so the streaks fan out across the body.
-    final px = d.y.abs().toDouble();
-    final py = d.x.abs().toDouble();
+    final last = engine.snake.length - 1;
+    final tail = _segmentRect(last, cellW, cellH).center;
+    // The way the tail is heading away from the body; falls back to the
+    // opposite of the head's direction for a one-segment snake, or when
+    // the tail has just wrapped across the board.
+    var dx = -engine.direction.delta.x.toDouble();
+    var dy = -engine.direction.delta.y.toDouble();
+    if (last > 0) {
+      final prev = _segmentRect(last - 1, cellW, cellH).center;
+      final vx = tail.dx - prev.dx;
+      final vy = tail.dy - prev.dy;
+      if (vx.abs() <= cellW * 1.5 && vy.abs() <= cellH * 1.5) {
+        dx = vx.sign;
+        dy = vy.sign;
+        // One axis only, in case of a diagonal from mid-animation.
+        if (dx != 0 && dy != 0) dy = 0;
+      }
+    }
+    if (dx == 0 && dy == 0) return;
+    // Perpendicular to that, so the streaks fan out side by side.
+    final px = dy.abs();
+    final py = dx.abs();
     for (var k = -1; k <= 1; k++) {
       final side = k * cellW * 0.28;
       final start = Offset(
-        head.dx - d.x * cellW * 0.7 + px * side,
-        head.dy - d.y * cellH * 0.7 + py * side,
+        tail.dx + dx * cellW * 0.5 + px * side,
+        tail.dy + dy * cellH * 0.5 + py * side,
       );
       final len = cellW * (1.6 - k.abs() * 0.5);
-      final end = Offset(start.dx - d.x * len, start.dy - d.y * len);
+      final end = Offset(start.dx + dx * len, start.dy + dy * len);
       canvas.drawLine(
         start,
         end,
