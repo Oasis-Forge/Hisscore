@@ -217,17 +217,24 @@ class SnakeBoardPainter extends CustomPainter {
 
     // ── Snake glow pass ──
     final skin = SnakeSkin.current;
+    // The glow swells with the combo, so a hot streak is visible in the
+    // snake itself and not only in the HUD.
+    final heat = engine.comboCount.clamp(0, 6);
     for (var i = engine.snake.length - 1; i >= 0; i--) {
-      final rect = _segmentRect(i, cellW, cellH).inflate(cellW * 0.12);
+      final rect = _segmentRect(
+        i,
+        cellW,
+        cellH,
+      ).inflate(cellW * (0.12 + heat * 0.03));
       final t = engine.snake.length > 1 ? i / (engine.snake.length - 1) : 0.0;
       final glowColor = skin == SnakeSkin.classic
           ? Color.lerp(RetroColors.phosphorHot, RetroColors.snakeTail, t)!
           : skin.bodyColor(i: i, t: t, elapsedMs: engine.elapsedMs);
       final glowPaint = Paint()
         ..color = glowColor.withValues(
-          alpha: skin == SnakeSkin.neon ? 0.35 : 0.12,
+          alpha: (skin == SnakeSkin.neon ? 0.35 : 0.12) + heat * 0.04,
         )
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5.0 + heat);
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, Radius.circular(cellW * 0.25)),
         glowPaint,
@@ -240,11 +247,15 @@ class SnakeBoardPainter extends CustomPainter {
       final t = engine.snake.length > 1 ? i / (engine.snake.length - 1) : 0.0;
       // Taper toward the tail so the body reads as a snake rather than
       // a chain of identical blocks.
-      final rect = _segmentRect(
+      var rect = _segmentRect(
         i,
         cellW,
         cellH,
       ).deflate(cellW * (0.08 + 0.14 * t * skin.taper));
+      if (isHead && engine.justAte) {
+        // Swallowing an apple: the head bulges, then settles over the tick.
+        rect = rect.inflate(cellW * 0.16 * (1 - tickProgress));
+      }
 
       final bodyColor = skin.bodyColor(i: i, t: t, elapsedMs: engine.elapsedMs);
       final bodyRRect = RRect.fromRectAndRadius(
@@ -317,6 +328,8 @@ class SnakeBoardPainter extends CustomPainter {
         }
       }
     }
+
+    if (engine.speedBurstActive) _paintSpeedStreaks(canvas, cellW, cellH);
 
     // ── Food items ──
     for (final item in engine.foods) {
@@ -524,6 +537,36 @@ class SnakeBoardPainter extends CustomPainter {
     }
     path.close();
     canvas.drawPath(path, Paint()..color = color);
+  }
+
+  /// Short streaks trailing the head while a speed burst is active.
+  void _paintSpeedStreaks(Canvas canvas, double cellW, double cellH) {
+    final head = _segmentRect(0, cellW, cellH).center;
+    final d = engine.direction.delta;
+    if (d.x == 0 && d.y == 0) return;
+    // Perpendicular to travel, so the streaks fan out across the body.
+    final px = d.y.abs().toDouble();
+    final py = d.x.abs().toDouble();
+    for (var k = -1; k <= 1; k++) {
+      final side = k * cellW * 0.28;
+      final start = Offset(
+        head.dx - d.x * cellW * 0.7 + px * side,
+        head.dy - d.y * cellH * 0.7 + py * side,
+      );
+      final len = cellW * (1.6 - k.abs() * 0.5);
+      final end = Offset(start.dx - d.x * len, start.dy - d.y * len);
+      canvas.drawLine(
+        start,
+        end,
+        Paint()
+          ..shader = ui.Gradient.linear(start, end, [
+            RetroColors.speedYellow.withValues(alpha: 0.7),
+            RetroColors.speedYellow.withValues(alpha: 0),
+          ])
+          ..strokeWidth = cellW * 0.12
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
 
   void _drawEyes(Canvas canvas, Rect head, double cellW) {

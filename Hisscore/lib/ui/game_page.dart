@@ -101,6 +101,19 @@ class _GamePageState extends State<GamePage>
   DateTime? _levelFlashAt;
   static const _levelFlashDuration = Duration(milliseconds: 420);
 
+  /// When the run ended, for the red flash that fades out after it.
+  DateTime? _deathFlashAt;
+  static const _deathFlashDuration = Duration(milliseconds: 500);
+
+  double get _deathFlashOpacity {
+    final at = _deathFlashAt;
+    if (at == null) return 0;
+    final elapsed = DateTime.now().difference(at).inMilliseconds;
+    final total = _deathFlashDuration.inMilliseconds;
+    if (elapsed >= total) return 0;
+    return 1.0 - elapsed / total;
+  }
+
   /// 1.0 right after a level advance, fading to 0.
   double get _levelFlashOpacity {
     final at = _levelFlashAt;
@@ -361,11 +374,7 @@ class _GamePageState extends State<GamePage>
         if (engine.justAte && engine.lastEatenFood != null) {
           final pos = engine.lastEatenFood!.position;
           _emitEatParticles(pos);
-          unawaited(
-            engine.lastEatenFood!.type == FoodType.apple
-                ? soundManager.playEat()
-                : soundManager.playBonus(),
-          );
+          unawaited(soundManager.playPickup(engine.lastEatenFood!.type));
           final gained = engine.score - scoreBefore;
           if (gained > 0) {
             _spawnLabel('+$gained', pos, RetroColors.phosphorHot);
@@ -404,6 +413,7 @@ class _GamePageState extends State<GamePage>
           ticker?.cancel();
           _emitDeathParticles();
           shakeController.shake(intensity: 8);
+          _deathFlashAt = DateTime.now();
           unawaited(soundManager.playGameOver());
           unawaited(_persistGameEnd());
         }
@@ -662,6 +672,13 @@ class _GamePageState extends State<GamePage>
 
   @override
   Widget build(BuildContext context) {
+    // Every transition that matters (play, pause, game over, menu, a
+    // combo change) goes through setState, so the music follows along
+    // from here. syncMusic only acts when something actually changed.
+    soundManager.syncMusic(
+      playing: !showIntro && engine.phase == GamePhase.running,
+      combo: engine.comboCount,
+    );
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
@@ -896,6 +913,21 @@ class _GamePageState extends State<GamePage>
                     color: RetroColors.phosphorDim,
                   ),
                 ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    final next = !soundManager.musicEnabled;
+                    unawaited(soundManager.setMusicEnabled(next));
+                    setState(() {});
+                  },
+                  child: Icon(
+                    soundManager.musicEnabled
+                        ? Icons.music_note
+                        : Icons.music_off,
+                    size: 12,
+                    color: RetroColors.phosphorDim,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -1028,12 +1060,25 @@ class _GamePageState extends State<GamePage>
                 fullBleed: true,
               ),
             ),
-            // Level-up flash, over the board but under the popups.
+            // Level-up: the screen edges pulse amber, over the board but
+            // under the popups. An edge glow rather than a full-screen
+            // flash, so the snake stays readable while it plays.
             if (_levelFlashOpacity > 0)
               IgnorePointer(
-                child: Opacity(
-                  opacity: _levelFlashOpacity * 0.5,
-                  child: const ColoredBox(color: RetroColors.levelFlash),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      radius: 0.95,
+                      colors: [
+                        Colors.transparent,
+                        RetroColors.amber.withValues(
+                          alpha: 0.6 * _levelFlashOpacity,
+                        ),
+                      ],
+                      stops: const [0.55, 1.0],
+                    ),
+                  ),
+                  child: const SizedBox.expand(),
                 ),
               ),
             for (final label in floatingLabels)
@@ -1051,6 +1096,16 @@ class _GamePageState extends State<GamePage>
                 onShare: _shareScore,
                 onResume: _onPrimary,
                 onExitToMenu: _onExitToMenu,
+              ),
+            // Death: a quick red flash before the game-over card settles in.
+            if (_deathFlashOpacity > 0)
+              IgnorePointer(
+                child: ColoredBox(
+                  color: RetroColors.cherry.withValues(
+                    alpha: 0.4 * _deathFlashOpacity,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
               ),
           ],
         );

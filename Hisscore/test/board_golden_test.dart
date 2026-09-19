@@ -28,7 +28,7 @@ class _TolerantComparator extends LocalFileComparator {
   }
 }
 
-Widget _board(SnakeEngine engine) {
+Widget _board(SnakeEngine engine, {double tickProgress = 1.0}) {
   return Directionality(
     textDirection: TextDirection.ltr,
     child: RepaintBoundary(
@@ -36,7 +36,11 @@ Widget _board(SnakeEngine engine) {
         width: 420,
         height: 300,
         child: CustomPaint(
-          painter: SnakeBoardPainter(engine: engine, pulse: 0.5),
+          painter: SnakeBoardPainter(
+            engine: engine,
+            pulse: 0.5,
+            tickProgress: tickProgress,
+          ),
         ),
       ),
     ),
@@ -98,6 +102,47 @@ void main() {
       );
     });
   }
+
+  testWidgets('head bulges right after eating', (tester) async {
+    final engine = _engine([
+      const GridPoint(6, 5),
+      const GridPoint(5, 5),
+      const GridPoint(4, 5),
+    ], Direction.right)..justAte = true;
+    // tickProgress 0 is the moment of eating, when the bulge is biggest.
+    await tester.pumpWidget(_board(engine, tickProgress: 0));
+    await expectLater(
+      find.byType(RepaintBoundary).first,
+      matchesGoldenFile('goldens/board_head_bulge.png'),
+    );
+  });
+
+  testWidgets('a hot combo swells the glow', (tester) async {
+    final engine = _engine([
+      const GridPoint(6, 5),
+      const GridPoint(5, 5),
+      const GridPoint(4, 5),
+      const GridPoint(3, 5),
+    ], Direction.right)..comboCount = 6;
+    await tester.pumpWidget(_board(engine));
+    await expectLater(
+      find.byType(RepaintBoundary).first,
+      matchesGoldenFile('goldens/board_combo_glow.png'),
+    );
+  });
+
+  testWidgets('speed burst trails streaks', (tester) async {
+    final engine = _engine([
+      const GridPoint(8, 5),
+      const GridPoint(7, 5),
+      const GridPoint(6, 5),
+    ], Direction.right)..speedBurstUntilMs = 5000;
+    await tester.pumpWidget(_board(engine));
+    await expectLater(
+      find.byType(RepaintBoundary).first,
+      matchesGoldenFile('goldens/board_speed_streaks.png'),
+    );
+  });
 
   testWidgets('every pickup type', (tester) async {
     final engine = _engine([
