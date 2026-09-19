@@ -33,8 +33,42 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 - Set the Android `applicationId`/`namespace` and the iOS/macOS bundle IDs to `APP_ID` exactly. `flutter create` appends the project name to the org.
 - `.gitignore`: add `/dist/`, `/coverage/`, `/store/`, `android/key.properties`, and `*.jks`.
 - `analysis_options.yaml`: add `unawaited_futures`, `prefer_single_quotes`, `prefer_const_constructors`, and `always_declare_return_types`.
-- Release signing reads `android/key.properties`. Without it, release builds are debug-signed.
-- `release.yml` fails when the release APK declares a permission missing from its `ALLOWED` list (RUN-2). Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR.
+- **Release signing has to be wired in by hand.** `flutter create` generates no signing config, so a release build is debug-signed even with `android/key.properties` present and every CI secret set — and Play rejects the upload for not matching the upload certificate. Add this to `android/app/build.gradle.kts` above `android {`, and the `signingConfig` line inside `buildTypes`:
+
+  ```kotlin
+  import java.util.Properties
+
+  val keystoreProperties = Properties().apply {
+      val f = rootProject.file("key.properties")
+      if (f.exists()) f.inputStream().use { load(it) }
+  }
+
+  android {
+      signingConfigs {
+          create("release") {
+              keystoreProperties.getProperty("storeFile")?.let { storeFile = file(it) }
+              storePassword = keystoreProperties.getProperty("storePassword")
+              keyAlias = keystoreProperties.getProperty("keyAlias")
+              keyPassword = keystoreProperties.getProperty("keyPassword")
+          }
+      }
+      buildTypes {
+          release {
+              // Falls back to the debug key when key.properties is absent, so a local
+              // release build still works; release.yml checks the bundle's real
+              // certificate, so CI cannot ship a debug-signed one by accident.
+              signingConfig = if (rootProject.file("key.properties").exists()) {
+                  signingConfigs.getByName("release")
+              } else {
+                  signingConfigs.getByName("debug")
+              }
+          }
+      }
+  }
+  ```
+
+  On the Groovy `build.gradle`, the same thing with `def keystoreProperties = new Properties()` and `signingConfigs { release { ... } }`.
+- `release.yml` dumps the release APK's permissions and hands them to `tool/check_permissions.sh`, which compares them against the `ALLOWED` list in that workflow (RUN-2) **both ways**: a permission a plugin added fails the release, and so does one the app needs and quietly lost. Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR. An empty `ALLOWED` means "declares none", not "allow anything".
 - Delete the `desktop` job in `ci.yml` if desktop isn't a target, and the `ios` job if iOS isn't.
 
 ## Don't read
@@ -56,7 +90,7 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 - **Right-to-left:** use `EdgeInsetsDirectional` and `AlignmentDirectional`, and wrap amounts and numbers in `textDirection: TextDirection.ltr`. `intl` exports its own `TextDirection`, so import it with `hide TextDirection`.
 - **Currency in right-to-left languages:** `NumberFormat.simpleCurrency` gives Latin symbols in Arabic (`SAR`, not `ر.س.`), and the Arabic pattern adds right-to-left marks. Use the local symbol from CLDR, and when an amount sits inside right-to-left text, wrap it in U+2066…U+2069 (a left-to-right isolate), built with `String.fromCharCode`.
 - **`in_app_purchase` on Android:** closing the purchase sheet without buying can arrive as a purchase update with an empty `productID` (status canceled, error, or even purchased). Treat it as the sheet closing, or the screen waits for the store forever. `buyNonConsumable` returning `false` means the sheet never opened. Test every way the sheet can end, closing it included.
-- **`google_mobile_ads` banner size:** the large anchored adaptive size can reserve up to 15% of the screen height and leaves blank bands around the ad. The standard anchored adaptive size (`getCurrentOrientationAnchoredAdaptiveBannerAdSize`, deprecated in 9.x) keeps the ad flush with the bottom.
+- **`google_mobile_ads` banner size is a real trade-off, not a lookup.** The large anchored adaptive size can reserve up to 15% of the screen height and leaves blank bands around the ad. The standard one, `getCurrentOrientationAnchoredAdaptiveBannerAdSize`, keeps the ad flush with the bottom — but it was deprecated in **8.0.0**, and the replacement the changelog names is `getLargeAnchoredAdaptiveBannerAdSize`: the large one. So there is no version of this where you get the tight banner from a supported call. Decide and date it: keep the deprecated call behind an explicit `// ignore: deprecated_member_use` with a comment saying why, knowing it will be removed; or take the large size and check against ADS-2 and ADS-3 that the reserved height still doesn't shift anything under a finger. What you cannot do is use it silently — `flutter analyze` makes warnings fatal by default, so the deprecated call fails the stack's own CI check until the ignore is there.
 - `DateFormat` with a locale away from a screen (a widget payload, a PDF, a background task) needs `initializeDateFormatting` first. Screens get it from the Material delegate.
 - `pumpAndSettle` never settles with some widgets (`PdfPreview`, endless animations). Pump until a condition holds instead.
 - Windows and Linux need `sqflite_common_ffi` set up in `main.dart`, with the database in the app support folder. Web has no sqflite.
@@ -82,6 +116,6 @@ adb shell am start -S -n <APP_ID>/.MainActivity
 - A long press or drag needs `input motionevent DOWN x y`, a sleep, `MOVE`s, and `UP` as separate calls. `input swipe` is too smooth for the launcher.
 - Screenshot coordinates are in the displayed image's frame; scale them before tapping.
 - In a right-to-left locale the app bar is mirrored, so the overflow menu is on the left.
-- Take a screenshot after every navigation step. Blind batches of taps go wrong without anyone noticing.
+- Check the screen after every navigation step: blind batches of taps go wrong without anyone noticing. Check it by reading it, not by photographing it — `/emulator` lists the screen as text for a fraction of a screenshot. Screenshots stay for what has to be judged by eye (`CLAUDE.md` → Token rules). Driving by hand without `/emulator`, `adb shell uiautomator dump` gives the same list.
 - The first tap on a home-screen widget after `am force-stop` gets eaten. Tap again before concluding it's broken.
 - The emulator holds the user's own test data. Back up in the app first, and restore or undo every change before finishing.
