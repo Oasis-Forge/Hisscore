@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/food_types.dart';
 import 'package:hisscore/game/snake_engine.dart';
 import 'package:hisscore/ui/board.dart';
+import 'package:hisscore/ui/snake_skin.dart';
 
 /// Goldens are rendered on a developer's machine and checked on CI's, so
 /// allow a hair of anti-aliasing drift between platforms while still
@@ -77,6 +78,26 @@ void main() {
       matchesGoldenFile('goldens/board_snake_apple.png'),
     );
   });
+
+  for (final skin in [SnakeSkin.pixel, SnakeSkin.neon, SnakeSkin.rainbow]) {
+    testWidgets('${skin.id} skin', (tester) async {
+      SnakeSkin.current = skin;
+      addTearDown(() => SnakeSkin.current = SnakeSkin.classic);
+      final engine = _engine([
+        const GridPoint(7, 5),
+        const GridPoint(6, 5),
+        const GridPoint(5, 5),
+        const GridPoint(5, 4),
+        const GridPoint(4, 4),
+        const GridPoint(3, 4),
+      ], Direction.right);
+      await tester.pumpWidget(_board(engine));
+      await expectLater(
+        find.byType(RepaintBoundary).first,
+        matchesGoldenFile('goldens/board_skin_${skin.id}.png'),
+      );
+    });
+  }
 
   testWidgets('every pickup type', (tester) async {
     final engine = _engine([

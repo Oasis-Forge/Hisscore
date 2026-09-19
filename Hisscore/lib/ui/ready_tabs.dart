@@ -4,6 +4,7 @@ import '../game/high_score_store.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'game_overlay.dart';
+import 'snake_skin.dart';
 import 'theme.dart';
 
 // ─── Ready screen tabs ──────────────────────────────
@@ -316,10 +317,14 @@ class ReadyLookTab extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onChanged,
+    required this.selectedSkin,
+    required this.onSkinChanged,
   });
 
   final GameTheme selected;
   final ValueChanged<GameTheme> onChanged;
+  final SnakeSkin selectedSkin;
+  final ValueChanged<SnakeSkin> onSkinChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -341,6 +346,25 @@ class ReadyLookTab extends StatelessWidget {
                 theme: theme,
                 isSelected: theme.id == selected.id,
                 onTap: () => onChanged(theme),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'SELECT SNAKE',
+          style: RetroText.pixel(size: 9, color: RetroColors.phosphorDim),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final skin in SnakeSkin.values)
+              _SkinChip(
+                skin: skin,
+                isSelected: skin == selectedSkin,
+                onTap: () => onSkinChanged(skin),
               ),
           ],
         ),
@@ -369,6 +393,7 @@ class _ThemeChip extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
+          width: 112,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: theme.screen,
@@ -399,6 +424,47 @@ class _ThemeChip extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkinChip extends StatelessWidget {
+  const _SkinChip({
+    required this.skin,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final SnakeSkin skin;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: skin.label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 112,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? RetroColors.phosphor : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: RetroColors.phosphorDim, width: 1.2),
+          ),
+          child: Text(
+            skin.label,
+            style: RetroText.pixel(
+              size: 8,
+              color: isSelected ? RetroColors.cabinet : RetroColors.phosphor,
+            ),
           ),
         ),
       ),
