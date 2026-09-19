@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../game/food_types.dart';
 import '../game/snake_engine.dart';
+import 'backdrops.dart';
 import 'particles.dart';
 import 'snake_skin.dart';
 import 'theme.dart';
@@ -125,8 +126,11 @@ class BoardLayerCache {
   final _CachedPicture _backdrop = _CachedPicture();
   final _CachedPicture _overlay = _CachedPicture();
 
-  ui.Picture pictureFor(Size size, void Function(Canvas) draw) =>
-      _backdrop.forSize(size, draw);
+  ui.Picture pictureFor(
+    Size size,
+    void Function(Canvas) draw, {
+    int variant = 0,
+  }) => _backdrop.forSize(size, draw, variant: variant);
 
   ui.Picture overlayFor(Size size, void Function(Canvas) draw) =>
       _overlay.forSize(size, draw);
@@ -141,10 +145,14 @@ class _CachedPicture {
   ui.Picture? _picture;
   Size? _size;
   GameTheme? _theme;
+  int? _variant;
 
-  ui.Picture forSize(Size size, void Function(Canvas) draw) {
+  ui.Picture forSize(Size size, void Function(Canvas) draw, {int variant = 0}) {
     final cached = _picture;
-    if (cached != null && _size == size && _theme == RetroColors.current) {
+    if (cached != null &&
+        _size == size &&
+        _theme == RetroColors.current &&
+        _variant == variant) {
       return cached;
     }
     cached?.dispose();
@@ -154,6 +162,7 @@ class _CachedPicture {
     _picture = picture;
     _size = size;
     _theme = RetroColors.current;
+    _variant = variant;
     return picture;
   }
 
@@ -188,10 +197,14 @@ class SnakeBoardPainter extends CustomPainter {
     final cache = staticLayers;
     if (cache != null) {
       canvas.drawPicture(
-        cache.pictureFor(size, (c) => _paintBackdrop(c, size, cellW, cellH)),
+        cache.pictureFor(
+          size,
+          (c) => _paintBackdrop(c, size),
+          variant: _backdrop.index,
+        ),
       );
     } else {
-      _paintBackdrop(canvas, size, cellW, cellH);
+      _paintBackdrop(canvas, size);
     }
 
     // ── Obstacles ──
@@ -351,21 +364,13 @@ class SnakeBoardPainter extends CustomPainter {
   }
 
   /// Screen fill and grid — identical every frame for a given size.
-  void _paintBackdrop(Canvas canvas, Size size, double cellW, double cellH) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = RetroColors.screen);
+  /// Adventure changes zone as levels climb; everything else is the grid.
+  BoardBackdrop get _backdrop => engine.mode == GameMode.adventure
+      ? BoardBackdrop.forLevel(engine.level)
+      : BoardBackdrop.grid;
 
-    final gridPaint = Paint()
-      ..color = RetroColors.grid
-      ..strokeWidth = 0.8;
-    for (var x = 1; x < engine.columns; x++) {
-      final dx = x * cellW;
-      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
-    }
-    for (var y = 1; y < engine.rows; y++) {
-      final dy = y * cellH;
-      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
-    }
-  }
+  void _paintBackdrop(Canvas canvas, Size size) =>
+      _backdrop.paint(canvas, size, engine.columns, engine.rows);
 
   /// Scanlines and vignette — also fixed for a given size.
   void _paintCrtOverlay(Canvas canvas, Size size) {
