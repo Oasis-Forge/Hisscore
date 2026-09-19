@@ -22,6 +22,7 @@ import 'intro_panel.dart';
 import 'particles.dart';
 import 'ready_tabs.dart';
 import 'screen_shake.dart';
+import 'share_card.dart';
 import 'theme.dart';
 
 class GamePage extends StatefulWidget {
@@ -582,7 +583,26 @@ class _GamePageState extends State<GamePage>
               '${engine.mode == GameMode.adventure ? ' (Level ${engine.level})' : ''} 🐍\n'
               'Can you beat it?';
     try {
-      await SharePlus.instance.share(ShareParams(text: text));
+      // The image is the point; the text is the fallback and the caption.
+      List<XFile>? files;
+      try {
+        final png = await renderShareCard(
+          engine: engine,
+          subtitle: isDailyRun
+              ? 'DAILY #$_dailyDayNumber  ·  STREAK ${dailyState.currentStreak}'
+              : engine.mode.label,
+        );
+        files = [XFile.fromData(png, mimeType: 'image/png')];
+      } catch (e) {
+        debugPrint('Share card failed, sharing text only: $e');
+      }
+      await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          files: files,
+          fileNameOverrides: files == null ? null : ['hisscore.png'],
+        ),
+      );
     } catch (e) {
       debugPrint('Share failed: $e');
     }
