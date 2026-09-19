@@ -85,7 +85,7 @@ screenshots aren't real gameplay. Shot list and required sizes are in
 ### 5. iOS has never been built
 
 Not once, on any machine. The icons and launch screens were generated
-and the bundle ID is set (`com.hisscore.hisscore`), but **nothing has
+and the bundle ID is set (`com.oasisforge.hisscore`), but **nothing has
 ever compiled**, so the whole platform is unverified.
 
 - [ ] Build on a Mac and fix whatever falls out

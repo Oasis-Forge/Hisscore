@@ -35,7 +35,7 @@ runs fit the screen). Only the daily and challenge codes use the fixed grid.
 4. Paste `firebase/firestore.rules` into **Firestore -> Rules** and publish (or
    `firebase deploy --only firestore`).
 5. **Project settings -> Add app -> Android**, package name
-   `com.hisscore.hisscore`. Download **`google-services.json`** and put it in
+   `com.oasisforge.hisscore`. Download **`google-services.json`** and put it in
    `Hisscore/android/app/`. (Add the iOS app too if you ship iOS.)
 6. Tell me the project is ready. The Firebase-backed `OnlineScoreBoard`,
    the Gradle plugin and `firebase_core` / `firebase_auth` / `cloud_firestore`
