@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
+import '../game/online_scores.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'game_overlay.dart';
+import 'online_board.dart';
 import 'snake_skin.dart';
 import 'theme.dart';
 
@@ -178,20 +180,118 @@ class ReadyHowTab extends StatelessWidget {
   }
 }
 
-class ReadyStatsTab extends StatelessWidget {
+class ReadyStatsTab extends StatefulWidget {
   const ReadyStatsTab({
     super.key,
     required this.stats,
     required this.topScores,
     required this.dailyState,
+    this.online = const NoopOnlineScoreBoard(),
+    this.dailyDayNumber = 1,
+    this.mode = GameMode.classic,
+    this.playerName = '',
+    this.onEditName,
   });
 
   final GameStats stats;
   final List<ScoreEntry> topScores;
   final DailyState dailyState;
 
+  /// The global boards. When it is not available the tab shows only the
+  /// on-device stats, as before.
+  final OnlineScoreBoard online;
+  final int dailyDayNumber;
+
+  /// The mode whose all-time board is shown.
+  final GameMode mode;
+  final String playerName;
+  final VoidCallback? onEditName;
+
+  @override
+  State<ReadyStatsTab> createState() => _ReadyStatsTabState();
+}
+
+enum _StatsView {
+  local('LOCAL'),
+  daily('TODAY'),
+  allTime('ALL-TIME');
+
+  const _StatsView(this.label);
+  final String label;
+}
+
+class _ReadyStatsTabState extends State<ReadyStatsTab> {
+  _StatsView _view = _StatsView.local;
+
   @override
   Widget build(BuildContext context) {
+    if (!widget.online.available) return _local();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final v in _StatsView.values) ...[
+              if (v != _StatsView.values.first) const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => setState(() => _view = v),
+                child: Text(
+                  v.label,
+                  style:
+                      RetroText.pixel(
+                        size: 8,
+                        color: v == _view
+                            ? RetroColors.phosphorHot
+                            : RetroColors.phosphorDim,
+                      ).copyWith(
+                        decoration: v == _view
+                            ? TextDecoration.underline
+                            : null,
+                        decorationColor: RetroColors.phosphorHot,
+                      ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        switch (_view) {
+          _StatsView.local => _local(),
+          _StatsView.daily => OnlineBoardView(
+            scores: widget.online,
+            board: BoardId.daily(widget.dailyDayNumber),
+          ),
+          _StatsView.allTime => OnlineBoardView(
+            scores: widget.online,
+            board: BoardId.allTime(widget.mode),
+          ),
+        },
+        if (_view != _StatsView.local) ...[
+          const SizedBox(height: 4),
+          Text(
+            _view == _StatsView.daily
+                ? 'DAILY #${widget.dailyDayNumber}'
+                : widget.mode.label,
+            style: RetroText.pixel(size: 7, color: RetroColors.metal),
+          ),
+        ],
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: widget.onEditName,
+          child: Text(
+            'YOU: ${widget.playerName}  [EDIT]',
+            style: RetroText.pixel(size: 7, color: RetroColors.zenBlue),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _local() {
+    final stats = widget.stats;
+    final topScores = widget.topScores;
+    final dailyState = widget.dailyState;
     if (stats.gamesPlayed == 0 && topScores.isEmpty) {
       return Text(
         'NO RUNS YET',

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'game/crash_reporter.dart';
 import 'game/high_score_store.dart';
+import 'game/online_scores.dart';
 import 'game/sentry_crash_reporter.dart';
 import 'game/snake_engine.dart';
 import 'ui/game_page.dart';
@@ -43,9 +44,13 @@ class HisscoreApp extends StatelessWidget {
     super.key,
     required this.highScoreStore,
     this.engineFactory,
+    this.onlineScores = const NoopOnlineScoreBoard(),
   });
 
   final HighScoreStore highScoreStore;
+
+  /// The global boards; none unless a backend is configured.
+  final OnlineScoreBoard onlineScores;
   final SnakeEngine Function()? engineFactory;
 
   @override
@@ -64,6 +69,7 @@ class HisscoreApp extends StatelessWidget {
       home: GamePage(
         highScoreStore: highScoreStore,
         engineFactory: engineFactory,
+        onlineScores: onlineScores,
       ),
     );
   }

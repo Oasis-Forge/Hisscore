@@ -11,6 +11,7 @@ import '../game/daily_challenge.dart';
 import '../game/food_types.dart';
 import '../game/high_score_store.dart';
 import '../game/notification_service.dart';
+import '../game/online_scores.dart';
 import '../game/review_prompter.dart';
 import '../game/snake_engine.dart';
 import '../game/sound_manager.dart';
@@ -21,6 +22,7 @@ import 'floating_label.dart';
 import 'game_overlay.dart';
 import 'hud_widgets.dart';
 import 'intro_panel.dart';
+import 'online_board.dart';
 import 'particles.dart';
 import 'ready_tabs.dart';
 import 'screen_shake.dart';
@@ -29,9 +31,15 @@ import 'snake_skin.dart';
 import 'theme.dart';
 
 class GamePage extends StatefulWidget {
-  const GamePage({super.key, required this.highScoreStore, this.engineFactory});
+  const GamePage({
+    super.key,
+    required this.highScoreStore,
+    this.engineFactory,
+    this.onlineScores = const NoopOnlineScoreBoard(),
+  });
 
   final HighScoreStore highScoreStore;
+  final OnlineScoreBoard onlineScores;
   final SnakeEngine Function()? engineFactory;
 
   @override
@@ -168,6 +176,12 @@ class _GamePageState extends State<GamePage>
   DailyState dailyState = const DailyState();
   bool isDailyRun = false;
 
+  /// The player's chosen handle for the global boards, if any.
+  String? _playerName;
+
+  String get _displayName =>
+      _playerName ?? PlayerName.defaultFor(widget.onlineScores.playerId ?? '');
+
   /// Set while playing a friend's (or your own shared) challenge code.
   ChallengeCode? challenge;
 
@@ -229,12 +243,14 @@ class _GamePageState extends State<GamePage>
     final loadedDaily = await widget.highScoreStore.loadDailyState();
     final themeId = await widget.highScoreStore.loadThemeId();
     final skinId = await widget.highScoreStore.loadSkinId();
+    final savedName = await widget.highScoreStore.loadPlayerName();
     if (!mounted) return;
     setState(() {
       highScore = value;
       topScores = scores;
       stats = loadedStats;
       dailyState = loadedDaily;
+      _playerName = savedName;
     });
     if (themeId != null || skinId != null) {
       if (themeId != null) RetroColors.current = GameTheme.byId(themeId);
@@ -294,6 +310,43 @@ class _GamePageState extends State<GamePage>
     if (isDailyRun) {
       await _persistDailyResult();
     }
+    unawaited(_submitOnline());
+  }
+
+  /// Posts this run to the global boards, best-effort: a missing backend or
+  /// a failed request must never get in the way of the game.
+  Future<void> _submitOnline() async {
+    final online = widget.onlineScores;
+    if (!online.available || engine.score <= 0) return;
+    final name = _displayName;
+    try {
+      if (isDailyRun) {
+        await online.submit(
+          BoardId.daily(_dailyDayNumber),
+          name: name,
+          score: engine.score,
+        );
+      }
+      if (_countsForLeaderboard) {
+        await online.submit(
+          BoardId.allTime(engine.mode),
+          name: name,
+          score: engine.score,
+        );
+      }
+    } catch (e) {
+      debugPrint('Online score submit failed: $e');
+    }
+  }
+
+  Future<void> _editName() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => EditNameDialog(current: _displayName),
+    );
+    if (name == null || !mounted) return;
+    setState(() => _playerName = name);
+    await widget.highScoreStore.savePlayerName(name);
   }
 
   /// Updates the daily-challenge streak after a daily run ends, and — the
@@ -1051,6 +1104,9 @@ class _GamePageState extends State<GamePage>
               onNewChallenge: () =>
                   _startChallenge(ChallengeCode.random(selectedMode)),
               onEnterCode: _enterCode,
+              online: widget.onlineScores,
+              playerName: _displayName,
+              onEditName: _editName,
               selectedTheme: RetroColors.current,
               onThemeChanged: _setTheme,
               selectedSkin: SnakeSkin.current,
