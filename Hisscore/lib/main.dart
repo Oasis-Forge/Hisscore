@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'game/crash_reporter.dart';
+import 'game/firestore_score_board.dart';
 import 'game/high_score_store.dart';
 import 'game/online_scores.dart';
 import 'game/sentry_crash_reporter.dart';
@@ -36,7 +39,11 @@ Future<void> _runApp(CrashReporter reporter) async {
 
   final store = SharedPreferencesHighScoreStore();
   await store.init();
-  runApp(HisscoreApp(highScoreStore: store));
+  // The global boards connect in the background; until they do (or if they
+  // never can, offline or with no Firebase config) the game has no boards.
+  final online = FirebaseScoreBoard();
+  unawaited(online.connect());
+  runApp(HisscoreApp(highScoreStore: store, onlineScores: online));
 }
 
 class HisscoreApp extends StatelessWidget {

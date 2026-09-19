@@ -1,5 +1,12 @@
 # Global leaderboard (Firebase)
 
+**Status: live.** The Firebase project is `oasisforge-hisscore` (Android app `com.oasisforge.hisscore`).
+`Hisscore/android/app/google-services.json` is committed: it holds identifiers, not secrets. The
+rules are what protect the data, and they have been checked against the live project (see below).
+`FirebaseScoreBoard` connects in the background, so the game never waits on it.
+Without that file the Google services Gradle plugin is skipped and the app builds and runs
+with no boards.
+
 The game talks to boards through `OnlineScoreBoard` (`lib/game/online_scores.dart`).
 Without a backend it uses `NoopOnlineScoreBoard`, the boards are hidden, and the
 game is exactly the local, offline game it was. Nothing below is required to run it.
@@ -26,6 +33,15 @@ Functions and the Blaze plan, and an input log recorded per run. Not built yet.
 
 Also note: all-time boards compare scores from differently shaped screens (normal
 runs fit the screen). Only the daily and challenge codes use the fixed grid.
+
+## Rules checked against the live project
+
+With an anonymous test user, these were each sent as an otherwise well-formed write and all
+returned HTTP 403: someone else's row, signed out, a lower-case name, a one-letter name, a
+name with markup, a score over 100000, a negative score, a score as a string, an extra field,
+and a path outside `boards/`. Reading a board while signed out returns 200; reading anything
+else is refused. The app's own create and rename (same score, new name) were accepted.
+The rules are not unit-tested in the repo: the fake Firestore does not support rule functions.
 
 ## One-time setup (you)
 
