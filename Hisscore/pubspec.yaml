@@ -35,7 +35,7 @@ dependencies:
   audioplayers: ^6.8.1
   share_plus: ^13.3.0
   in_app_review: ^2.0.12
-  flutter_local_notifications: ^22.3.0
+  flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1
   sentry_flutter: ^9.30.0
 
@@ -52,7 +52,7 @@ dev_dependencies:
 
   # Dev-only tools used to (re)generate the app icon and launch splash
   # from tool/generate_icon.dart. Not used at runtime.
-  image: ^4.9.2
+  image: ^4.10.1
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.8
 
