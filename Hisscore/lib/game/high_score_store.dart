@@ -104,6 +104,11 @@ abstract class HighScoreStore {
   /// Id of the chosen snake skin (see `ui/snake_skin.dart`), or null.
   Future<String?> loadSkinId();
   Future<void> saveSkinId(String id);
+
+  /// The public handle shown on the global boards, or null if the player
+  /// has not chosen one (a default is derived from their player id).
+  Future<String?> loadPlayerName();
+  Future<void> savePlayerName(String name);
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -117,6 +122,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   DailyState _daily = const DailyState();
   String? _themeId;
   String? _skinId;
+  String? _playerName;
 
   @override
   Future<int> load() async => value;
@@ -173,6 +179,12 @@ class InMemoryHighScoreStore implements HighScoreStore {
 
   @override
   Future<void> saveSkinId(String id) async => _skinId = id;
+
+  @override
+  Future<String?> loadPlayerName() async => _playerName;
+
+  @override
+  Future<void> savePlayerName(String name) async => _playerName = name;
 }
 
 // ─── SharedPreferences (production) ─────────────────
@@ -186,6 +198,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _dailyKey = 'hisscore.daily_state';
   static const _themeKey = 'hisscore.theme';
   static const _skinKey = 'hisscore.skin';
+  static const _playerNameKey = 'hisscore.player_name';
 
   final String key;
   SharedPreferences? _prefs;
@@ -304,5 +317,17 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> saveSkinId(String id) async {
     await init();
     await _prefs!.setString(_skinKey, id);
+  }
+
+  @override
+  Future<String?> loadPlayerName() async {
+    await init();
+    return _prefs!.getString(_playerNameKey);
+  }
+
+  @override
+  Future<void> savePlayerName(String name) async {
+    await init();
+    await _prefs!.setString(_playerNameKey, name);
   }
 }

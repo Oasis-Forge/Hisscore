@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
+import '../game/online_scores.dart';
 import '../game/snake_engine.dart';
 import 'ready_tabs.dart';
 import 'snake_skin.dart';
@@ -24,6 +25,9 @@ class IntroPanel extends StatelessWidget {
     required this.onStartDaily,
     required this.onNewChallenge,
     required this.onEnterCode,
+    required this.online,
+    required this.playerName,
+    required this.onEditName,
     required this.selectedTheme,
     required this.onThemeChanged,
     required this.selectedSkin,
@@ -43,6 +47,9 @@ class IntroPanel extends StatelessWidget {
   final VoidCallback onStartDaily;
   final VoidCallback onNewChallenge;
   final VoidCallback onEnterCode;
+  final OnlineScoreBoard online;
+  final String playerName;
+  final VoidCallback onEditName;
   final GameTheme selectedTheme;
   final ValueChanged<GameTheme> onThemeChanged;
   final SnakeSkin selectedSkin;
@@ -104,6 +111,11 @@ class IntroPanel extends StatelessWidget {
                       stats: stats,
                       topScores: topScores,
                       dailyState: dailyState,
+                      online: online,
+                      dailyDayNumber: dailyDayNumber,
+                      mode: selectedMode,
+                      playerName: playerName,
+                      onEditName: onEditName,
                     ),
                   },
                 ],

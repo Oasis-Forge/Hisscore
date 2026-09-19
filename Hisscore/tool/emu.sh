@@ -27,7 +27,7 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1 # stops Git Bash rewriting /sdcard into a Windows path
 
-app=com.hisscore.hisscore
+app=com.oasisforge.hisscore
 sdk=${ANDROID_HOME:-${LOCALAPPDATA:-$HOME}/Android/Sdk}
 if command -v cygpath >/dev/null; then sdk=$(cygpath -u "$sdk"); fi
 

@@ -21,7 +21,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.44.8'
-  PACKAGE_NAME: 'com.hisscore.hisscore'
+  PACKAGE_NAME: 'com.oasisforge.hisscore'
   SLUG: 'hisscore'
 
 jobs:

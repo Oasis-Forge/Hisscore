@@ -1,0 +1,59 @@
+rules_version = '2';
+
+// Global score boards. One document per player per board:
+//   boards/{boardId}/entries/{playerUid}  { name, score, updatedAt }
+// where boardId is "daily-<dayNumber>" or "alltime-<mode>".
+//
+// These rules stop the obvious abuse (writing as someone else, lowering or
+// deleting scores, junk names, absurd values, flooding). They cannot tell
+// a real score from a made-up one within the cap: the client reports its
+// own score. Real verification needs a server that replays the run.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Highest plausible score on any board, a deliberately loose cap.
+    function maxScore() { return 100000; }
+
+    function validName(name) {
+      return name is string
+        && name.size() >= 2
+        && name.size() <= 12
+        && name.matches('^[A-Z0-9 _-]+$');
+    }
+
+    function validEntry(data) {
+      return data.keys().hasOnly(['name', 'score', 'updatedAt'])
+        && validName(data.name)
+        && data.score is int
+        && data.score >= 0
+        && data.score <= maxScore()
+        && data.updatedAt == request.time;
+    }
+
+    match /boards/{boardId}/entries/{uid} {
+      // Boards are public.
+      allow read: if true;
+
+      // Only the signed-in player writes their own row.
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && validEntry(request.resource.data);
+
+      // A row only ever goes up, and not more than once every 5 seconds.
+      // (Renaming without a higher score is allowed through the same rule
+      // by resubmitting the same score, so the app always sends the best.)
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && validEntry(request.resource.data)
+        && request.resource.data.score >= resource.data.score
+        && request.time > resource.data.updatedAt + duration.value(5, 's');
+
+      allow delete: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
