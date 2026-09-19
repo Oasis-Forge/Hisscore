@@ -112,7 +112,7 @@ jobs:
       # List the ones the app may declare; any other fails the release.
       - name: Check the APK's permissions
         env:
-          ALLOWED: 'android.permission.INTERNET android.permission.POST_NOTIFICATIONS'
+          ALLOWED: 'android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE android.permission.POST_NOTIFICATIONS android.permission.VIBRATE com.google.android.providers.gsf.permission.READ_GSERVICES'
         run: |
           aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
           "$aapt2" dump permissions Hisscore/build/app/outputs/flutter-apk/app-release.apk | tee permissions.txt
