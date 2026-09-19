@@ -16,6 +16,16 @@ class SoundManager {
   static const _musicLayers = ['bass', 'arp', 'lead'];
   static const _musicVolume = 0.4;
 
+  /// Sound effects and music both mix with whatever else is playing instead
+  /// of taking audio focus. A Snake game has no business permanently
+  /// stopping the podcast someone had on: on Android that means asking for
+  /// no focus at all, on iOS the ambient category.
+  @visibleForTesting
+  static final AudioContext mixWithOthers = AudioContext(
+    android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
+  );
+
   bool _enabled = true;
   bool get enabled => _enabled;
 
@@ -99,8 +109,13 @@ class SoundManager {
   Future<AudioPool> _poolFor(String name) async {
     final existing = _pools[name];
     if (existing != null) return existing;
-    final pool = await AudioPool.createFromAsset(
-      path: 'sfx/$name.wav',
+    // AudioPool.createFromAsset takes no audio context and does not forward
+    // one, so its players fall back to the global default and ask for
+    // AUDIOFOCUS_GAIN on every blip, stopping the player's own music. Build
+    // the pool the long way so the effects mix, like the layers below.
+    final pool = await AudioPool.create(
+      source: AssetSource('sfx/$name.wav'),
+      audioContext: mixWithOthers,
       maxPlayers: 3,
       playerMode: PlayerMode.lowLatency,
     );
@@ -146,7 +161,7 @@ class SoundManager {
       }
     } catch (e) {
       // No audio backend here: give up on music for the session.
-      debugPrint('SoundManager: music unavailable ()');
+      debugPrint('SoundManager: music unavailable ($e)');
       _musicUnavailable = true;
       _wantPlaying = false;
       _musicPlaying = false;
@@ -164,14 +179,7 @@ class SoundManager {
       // others, leaving only a single layer. Don't take focus, and mix with
       // whatever else is playing.
       try {
-        await player.setAudioContext(
-          AudioContext(
-            android: const AudioContextAndroid(
-              audioFocus: AndroidAudioFocus.none,
-            ),
-            iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
-          ),
-        );
+        await player.setAudioContext(mixWithOthers);
       } catch (e) {
         debugPrint('SoundManager: could not set audio context ($e)');
       }
