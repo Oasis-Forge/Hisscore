@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/food_types.dart';
 import 'package:hisscore/game/snake_engine.dart';
 import 'package:hisscore/ui/board.dart';
+import 'package:hisscore/ui/backdrops.dart';
 import 'package:hisscore/ui/snake_skin.dart';
 
 /// Goldens are rendered on a developer's machine and checked on CI's, so
@@ -143,6 +144,23 @@ void main() {
       matchesGoldenFile('goldens/board_speed_streaks.png'),
     );
   });
+
+  for (final level in [4, 7, 10]) {
+    final zone = BoardBackdrop.forLevel(level);
+    testWidgets('${zone.name} backdrop', (tester) async {
+      final engine = _engine([
+        const GridPoint(6, 5),
+        const GridPoint(5, 5),
+        const GridPoint(4, 5),
+      ], Direction.right)..mode = GameMode.adventure;
+      engine.level = level;
+      await tester.pumpWidget(_board(engine));
+      await expectLater(
+        find.byType(RepaintBoundary).first,
+        matchesGoldenFile('goldens/board_backdrop_${zone.name}.png'),
+      );
+    });
+  }
 
   testWidgets('every pickup type', (tester) async {
     final engine = _engine([

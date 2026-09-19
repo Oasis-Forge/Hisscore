@@ -20,9 +20,9 @@ Keep output minimal — this burns real tokens:
 - Verify changes on the Android emulator (`bash Hisscore/tool/emu.sh`,
   see the `emulator` skill), not the web build. Web-only checks miss
   platform behaviour (audio focus is one example).
-- Screenshots are for looks only; read the screen as text with
-  `emu.sh screen`. The settings deny `Read` on `*.png`, so to check a
-  color sample the pixel of a screencap instead of opening it.
+- Screenshots are for looks only (one per thing to judge); read the
+  screen as text with `emu.sh screen`. Reading PNGs is allowed, so open
+  goldens and screencaps when the look is what is being checked.
 
 ## Product
 

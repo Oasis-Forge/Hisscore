@@ -35,7 +35,6 @@
       "Read(./ios/Flutter/ephemeral/**)",
       "Read(./android/.gradle/**)",
       "Read(./.idea/**)",
-      "Read(**/*.png)",
       "Read(**/*.ico)"
     ]
   },
