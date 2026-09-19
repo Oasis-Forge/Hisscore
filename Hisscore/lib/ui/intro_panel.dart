@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
 import '../game/online_scores.dart';
+import '../game/quests.dart';
 import '../game/snake_engine.dart';
 import 'ready_tabs.dart';
 import 'snake_skin.dart';
@@ -28,6 +29,11 @@ class IntroPanel extends StatelessWidget {
     required this.online,
     required this.playerName,
     required this.onEditName,
+    required this.statsView,
+    required this.onStatsViewChanged,
+    required this.progress,
+    required this.quests,
+    required this.onOpenQuests,
     required this.selectedTheme,
     required this.onThemeChanged,
     required this.selectedSkin,
@@ -50,6 +56,11 @@ class IntroPanel extends StatelessWidget {
   final OnlineScoreBoard online;
   final String playerName;
   final VoidCallback onEditName;
+  final StatsView statsView;
+  final ValueChanged<StatsView> onStatsViewChanged;
+  final PlayerProgress progress;
+  final List<Quest> quests;
+  final VoidCallback onOpenQuests;
   final GameTheme selectedTheme;
   final ValueChanged<GameTheme> onThemeChanged;
   final SnakeSkin selectedSkin;
@@ -99,6 +110,9 @@ class IntroPanel extends StatelessWidget {
                       onStartDaily: onStartDaily,
                       onNewChallenge: onNewChallenge,
                       onEnterCode: onEnterCode,
+                      questSummary:
+                          'QUESTS ${quests.where((q) => progress.completed.contains(q.id)).length}/${quests.length}  \u00B7  LVL ${progress.level}',
+                      onOpenQuests: onOpenQuests,
                     ),
                     ReadyTab.how => const ReadyHowTab(),
                     ReadyTab.look => ReadyLookTab(
@@ -116,6 +130,10 @@ class IntroPanel extends StatelessWidget {
                       mode: selectedMode,
                       playerName: playerName,
                       onEditName: onEditName,
+                      view: statsView,
+                      onViewChanged: onStatsViewChanged,
+                      progress: progress,
+                      quests: quests,
                     ),
                   },
                 ],

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'quests.dart';
 import 'snake_engine.dart';
 
 // ─── Score entry for the top-5 leaderboard ──────────
@@ -109,6 +110,10 @@ abstract class HighScoreStore {
   /// has not chosen one (a default is derived from their player id).
   Future<String?> loadPlayerName();
   Future<void> savePlayerName(String name);
+
+  /// XP, level and today's quest state.
+  Future<PlayerProgress> loadProgress();
+  Future<void> saveProgress(PlayerProgress progress);
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -123,6 +128,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   String? _themeId;
   String? _skinId;
   String? _playerName;
+  PlayerProgress _progress = const PlayerProgress();
 
   @override
   Future<int> load() async => value;
@@ -185,6 +191,13 @@ class InMemoryHighScoreStore implements HighScoreStore {
 
   @override
   Future<void> savePlayerName(String name) async => _playerName = name;
+
+  @override
+  Future<PlayerProgress> loadProgress() async => _progress;
+
+  @override
+  Future<void> saveProgress(PlayerProgress progress) async =>
+      _progress = progress;
 }
 
 // ─── SharedPreferences (production) ─────────────────
@@ -199,6 +212,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _themeKey = 'hisscore.theme';
   static const _skinKey = 'hisscore.skin';
   static const _playerNameKey = 'hisscore.player_name';
+  static const _progressKey = 'hisscore.progress';
 
   final String key;
   SharedPreferences? _prefs;
@@ -329,5 +343,17 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> savePlayerName(String name) async {
     await init();
     await _prefs!.setString(_playerNameKey, name);
+  }
+
+  @override
+  Future<PlayerProgress> loadProgress() async {
+    await init();
+    return PlayerProgress.decode(_prefs!.getString(_progressKey));
+  }
+
+  @override
+  Future<void> saveProgress(PlayerProgress progress) async {
+    await init();
+    await _prefs!.setString(_progressKey, progress.encode());
   }
 }
