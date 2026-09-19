@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/food_types.dart';
 import 'package:hisscore/game/sound_manager.dart';
@@ -21,6 +22,20 @@ void main() {
     expect(names.length, FoodType.values.length);
     expect(SoundManager.pickupSound(FoodType.apple), 'eat');
     expect(SoundManager.pickupSound(FoodType.shield), 'shield');
+  });
+
+  test('sound effects and music mix instead of taking audio focus', () {
+    // A game blip must never stop the music the player already had on:
+    // AUDIOFOCUS_GAIN would, and is what AudioPool falls back to when it is
+    // built without an audio context.
+    expect(
+      SoundManager.mixWithOthers.android.audioFocus,
+      AndroidAudioFocus.none,
+    );
+    expect(
+      SoundManager.mixWithOthers.iOS.category,
+      AVAudioSessionCategory.ambient,
+    );
   });
 
   test('music calls are harmless without an audio backend', () async {
