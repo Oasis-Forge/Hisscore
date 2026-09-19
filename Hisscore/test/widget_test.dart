@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hisscore/game/daily_challenge.dart';
 import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/snake_engine.dart';
 import 'package:hisscore/main.dart';
@@ -151,6 +152,26 @@ void main() {
 
     expect(find.text('PRESS START'), findsOneWidget);
     expect(find.text('SELECT MODE'), findsOneWidget);
+  });
+
+  testWidgets('the daily is one fixed grid, letterboxed on any screen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      HisscoreApp(highScoreStore: InMemoryHighScoreStore()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('PLAY DAILY'));
+    await tester.pump();
+
+    final engine = _painterOf(tester).engine;
+    expect(engine.columns, DailyChallenge.gridColumns);
+    expect(engine.rows, DailyChallenge.gridRows);
+
+    // The test window is landscape, so the board is narrower than it is
+    // tall and keeps the daily's shape rather than filling the screen.
+    final size = tester.getSize(find.byType(SnakeBoard));
+    expect(size.width / size.height, closeTo(DailyChallenge.gridAspect, 0.01));
   });
 
   testWidgets('running into a wall ends the run and PLAY AGAIN restarts', (

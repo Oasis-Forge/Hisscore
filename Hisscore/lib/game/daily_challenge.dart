@@ -5,6 +5,13 @@
 /// No Flutter dependency, like snake_engine.dart — this is plain date
 /// arithmetic and string keys, easy to unit test.
 abstract final class DailyChallenge {
+  /// The daily board is the same size on every device, so the same seed
+  /// really gives the same game and scores can be compared. Screens that
+  /// do not match this shape are letterboxed.
+  static const gridColumns = 20;
+  static const gridRows = 30;
+  static const gridAspect = gridColumns / gridRows;
+
   /// The Snake game's own "epoch" — day 1 of the daily challenge.
   /// Arbitrary, just needs to be fixed so day numbers are stable.
   static final DateTime epoch = DateTime.utc(2026, 1, 1);
@@ -58,5 +65,43 @@ abstract final class DailyChallenge {
     required DateTime today,
   }) {
     return lastPlayedKey == dateKey(today);
+  }
+
+  /// Points each filled square of the result bar stands for.
+  static const pointsPerBarSquare = 50;
+  static const _barSquares = 10;
+
+  /// A ten-square bar for the shareable result: one filled square per
+  /// [pointsPerBarSquare] points, shaded green, then yellow, then red as
+  /// it fills, and the rest black. Read left to right it is Wordle-style:
+  /// how far you got, at a glance, without spoiling anything.
+  static String scoreBar(int score) {
+    final filled = (score ~/ pointsPerBarSquare).clamp(0, _barSquares);
+    return [
+      for (var i = 0; i < _barSquares; i++)
+        if (i >= filled)
+          '⬛'
+        else if (i < 5)
+          '🟩'
+        else if (i < 8)
+          '🟨'
+        else
+          '🟥',
+    ].join();
+  }
+
+  /// The text people paste after a daily run.
+  static String resultText({
+    required int dayNumber,
+    required int score,
+    required int apples,
+    required int bestCombo,
+    required int streak,
+  }) {
+    final best = bestCombo > 1 ? ' · combo x$bestCombo' : '';
+    return 'HISCORE Daily #$dayNumber 🐍\n'
+        '${scoreBar(score)}\n'
+        '$score pts · $apples 🍎$best\n'
+        'Streak $streak 🔥';
   }
 }

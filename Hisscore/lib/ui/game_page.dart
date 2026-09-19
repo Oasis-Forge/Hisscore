@@ -131,10 +131,14 @@ class _GamePageState extends State<GamePage>
 
   /// Builds an engine sized to the current screen. Tests inject their
   /// own engine and keep whatever grid they asked for.
-  SnakeEngine _newEngine({GameMode? mode, Random? random}) {
+  SnakeEngine _newEngine({GameMode? mode, Random? random, bool daily = false}) {
     final injected = widget.engineFactory;
     if (injected != null && random == null) return injected();
-    final grid = boardGridFor(_playAreaSize);
+    // The daily is one fixed size on every device; everything else is
+    // shaped to the screen.
+    final grid = daily
+        ? (columns: DailyChallenge.gridColumns, rows: DailyChallenge.gridRows)
+        : boardGridFor(_playAreaSize);
     return SnakeEngine(
       columns: grid.columns,
       rows: grid.rows,
@@ -576,7 +580,11 @@ class _GamePageState extends State<GamePage>
     setState(() {
       ticker?.cancel();
       final seed = DailyChallenge.seedForDay(_dailyDayNumber);
-      engine = _newEngine(mode: GameMode.classic, random: Random(seed));
+      engine = _newEngine(
+        mode: GameMode.classic,
+        random: Random(seed),
+        daily: true,
+      );
       engine.mode = GameMode.classic;
       selectedMode = GameMode.classic;
       isDailyRun = true;
@@ -618,9 +626,13 @@ class _GamePageState extends State<GamePage>
   /// Shares the current run's result via the platform share sheet.
   Future<void> _shareScore() async {
     final text = isDailyRun
-        ? 'HISSCORE Daily #$_dailyDayNumber — Score ${engine.score} 🐍🍎\n'
-              'Streak: ${dailyState.currentStreak} day${dailyState.currentStreak == 1 ? '' : 's'}\n'
-              'Can you beat it?'
+        ? DailyChallenge.resultText(
+            dayNumber: _dailyDayNumber,
+            score: engine.score,
+            apples: engine.totalApplesEaten,
+            bestCombo: engine.bestCombo,
+            streak: dailyState.currentStreak,
+          )
         : 'HISSCORE — ${engine.mode.label} — Score ${engine.score}'
               '${engine.mode == GameMode.adventure ? ' (Level ${engine.level})' : ''} 🐍\n'
               'Can you beat it?';
@@ -1035,11 +1047,38 @@ class _GamePageState extends State<GamePage>
       builder: (context, constraints) {
         // The board fills this area edge to edge, so its geometry is
         // simply the area itself — particles and popups ride on it.
-        _boardSize = constraints.biggest;
+        var area = constraints.biggest;
+        // The daily has a fixed shape; on a screen of another shape it is
+        // letterboxed rather than stretched.
+        final fixed =
+            isDailyRun &&
+            engine.columns == DailyChallenge.gridColumns &&
+            engine.rows == DailyChallenge.gridRows;
+        if (fixed) {
+          final fit = _fitAspect(area, DailyChallenge.gridAspect);
+          _boardSize = fit;
+          _boardOffset = Offset.zero;
+          return Center(
+            child: SizedBox(
+              width: fit.width,
+              height: fit.height,
+              child: _buildBoardLayers(),
+            ),
+          );
+        }
+        _boardSize = area;
         _boardOffset = Offset.zero;
         return _buildBoardLayers();
       },
     );
+  }
+
+  /// The largest box of the given width / height [aspect] that fits [area].
+  static Size _fitAspect(Size area, double aspect) {
+    if (area.width / area.height > aspect) {
+      return Size(area.height * aspect, area.height);
+    }
+    return Size(area.width, area.width / aspect);
   }
 
   Widget _buildBoardLayers() {
