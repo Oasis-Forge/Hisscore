@@ -267,11 +267,16 @@ class _GamePageState extends State<GamePage>
       _playerName = savedName;
       _progress = savedProgress;
     });
-    if (themeId != null || skinId != null) {
-      if (themeId != null) RetroColors.current = GameTheme.byId(themeId);
-      if (skinId != null) SnakeSkin.current = SnakeSkin.byId(skinId);
-      _rebuildAll();
-    }
+    // A saved look the player has not earned (or has not earned yet) falls
+    // back to the free one.
+    final level = savedProgress.level;
+    final theme = GameTheme.byId(themeId);
+    final skin = SnakeSkin.byId(skinId);
+    RetroColors.current = theme.unlockLevel <= level
+        ? theme
+        : GameTheme.phosphorGreen;
+    SnakeSkin.current = skin.unlockLevel <= level ? skin : SnakeSkin.classic;
+    _rebuildAll();
   }
 
   /// Zen mode never ends and scores climb forever — it doesn't compete
@@ -745,12 +750,14 @@ class _GamePageState extends State<GamePage>
   /// palette in build(), but some are const and would never notice, so
   /// the whole tree is marked dirty (state is kept).
   void _setTheme(GameTheme theme) {
+    if (theme.unlockLevel > _progress.level) return;
     RetroColors.current = theme;
     unawaited(widget.highScoreStore.saveThemeId(theme.id));
     _rebuildAll();
   }
 
   void _setSkin(SnakeSkin skin) {
+    if (skin.unlockLevel > _progress.level) return;
     setState(() => SnakeSkin.current = skin);
     unawaited(widget.highScoreStore.saveSkinId(skin.id));
   }

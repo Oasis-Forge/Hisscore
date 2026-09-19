@@ -473,8 +473,11 @@ class ReadyLookTab extends StatelessWidget {
     required this.onChanged,
     required this.selectedSkin,
     required this.onSkinChanged,
+    required this.level,
   });
 
+  /// The player's level; looks that need more are shown locked.
+  final int level;
   final GameTheme selected;
   final ValueChanged<GameTheme> onChanged;
   final SnakeSkin selectedSkin;
@@ -499,6 +502,7 @@ class ReadyLookTab extends StatelessWidget {
               _ThemeChip(
                 theme: theme,
                 isSelected: theme.id == selected.id,
+                locked: theme.unlockLevel > level,
                 onTap: () => onChanged(theme),
               ),
           ],
@@ -518,6 +522,7 @@ class ReadyLookTab extends StatelessWidget {
               _SkinChip(
                 skin: skin,
                 isSelected: skin == selectedSkin,
+                locked: skin.unlockLevel > level,
                 onTap: () => onSkinChanged(skin),
               ),
           ],
@@ -531,11 +536,13 @@ class _ThemeChip extends StatelessWidget {
   const _ThemeChip({
     required this.theme,
     required this.isSelected,
+    required this.locked,
     required this.onTap,
   });
 
   final GameTheme theme;
   final bool isSelected;
+  final bool locked;
   final VoidCallback onTap;
 
   @override
@@ -543,41 +550,54 @@ class _ThemeChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: theme.label,
+      enabled: !locked,
+      label: locked
+          ? '${theme.label}, unlocks at level ${theme.unlockLevel}'
+          : theme.label,
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 112,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: theme.screen,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isSelected ? theme.phosphor : theme.phosphorDim,
-              width: isSelected ? 2.5 : 1.2,
+        onTap: locked ? null : onTap,
+        child: Opacity(
+          opacity: locked ? 0.4 : 1,
+          child: Container(
+            width: 112,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.screen,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isSelected ? theme.phosphor : theme.phosphorDim,
+                width: isSelected ? 2.5 : 1.2,
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                theme.label,
-                style: RetroText.pixel(size: 8, color: theme.phosphor),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final c in [theme.phosphor, theme.amber, theme.food])
-                    Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      color: c,
-                    ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  theme.label,
+                  style: RetroText.pixel(size: 8, color: theme.phosphor),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final c in [theme.phosphor, theme.amber, theme.food])
+                      Container(
+                        width: 10,
+                        height: 10,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        color: c,
+                      ),
+                  ],
+                ),
+                if (locked) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'LVL ${theme.unlockLevel}',
+                    style: RetroText.pixel(size: 7, color: theme.amber),
+                  ),
                 ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -589,11 +609,13 @@ class _SkinChip extends StatelessWidget {
   const _SkinChip({
     required this.skin,
     required this.isSelected,
+    required this.locked,
     required this.onTap,
   });
 
   final SnakeSkin skin;
   final bool isSelected;
+  final bool locked;
   final VoidCallback onTap;
 
   @override
@@ -601,23 +623,43 @@ class _SkinChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: skin.label,
+      enabled: !locked,
+      label: locked
+          ? '${skin.label}, unlocks at level ${skin.unlockLevel}'
+          : skin.label,
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 112,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? RetroColors.phosphor : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: RetroColors.phosphorDim, width: 1.2),
-          ),
-          child: Text(
-            skin.label,
-            style: RetroText.pixel(
-              size: 8,
-              color: isSelected ? RetroColors.cabinet : RetroColors.phosphor,
+        onTap: locked ? null : onTap,
+        child: Opacity(
+          opacity: locked ? 0.4 : 1,
+          child: Container(
+            width: 112,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? RetroColors.phosphor : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: RetroColors.phosphorDim, width: 1.2),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  skin.label,
+                  style: RetroText.pixel(
+                    size: 8,
+                    color: isSelected
+                        ? RetroColors.cabinet
+                        : RetroColors.phosphor,
+                  ),
+                ),
+                if (locked) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'LVL ${skin.unlockLevel}',
+                    style: RetroText.pixel(size: 7, color: RetroColors.amber),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

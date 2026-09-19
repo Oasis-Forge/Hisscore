@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/high_score_store.dart';
+import 'package:hisscore/game/quests.dart';
 import 'package:hisscore/main.dart';
 import 'package:hisscore/ui/snake_skin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,7 +47,9 @@ void main() {
 
   testWidgets('LOOK tab switches and saves the skin', (tester) async {
     final store = InMemoryHighScoreStore();
+    await store.saveProgress(const PlayerProgress(xp: 100000));
     await tester.pumpWidget(HisscoreApp(highScoreStore: store));
+    await tester.pump();
     await tester.pump();
 
     await tester.tap(find.text('LOOK'));
@@ -62,6 +65,7 @@ void main() {
 
   testWidgets('a saved skin is applied on launch', (tester) async {
     final store = InMemoryHighScoreStore();
+    await store.saveProgress(const PlayerProgress(xp: 100000));
     await store.saveSkinId('pixel');
     await tester.pumpWidget(HisscoreApp(highScoreStore: store));
     await tester.pump();
