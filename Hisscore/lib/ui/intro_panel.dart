@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game/high_score_store.dart';
 import '../game/snake_engine.dart';
 import 'ready_tabs.dart';
+import 'snake_skin.dart';
 import 'theme.dart';
 
 // ─── Intro panel (over the attract demo) ────────────
@@ -23,6 +24,8 @@ class IntroPanel extends StatelessWidget {
     required this.onStartDaily,
     required this.selectedTheme,
     required this.onThemeChanged,
+    required this.selectedSkin,
+    required this.onSkinChanged,
   });
 
   final bool blinkOn;
@@ -38,6 +41,8 @@ class IntroPanel extends StatelessWidget {
   final VoidCallback onStartDaily;
   final GameTheme selectedTheme;
   final ValueChanged<GameTheme> onThemeChanged;
+  final SnakeSkin selectedSkin;
+  final ValueChanged<SnakeSkin> onSkinChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +91,8 @@ class IntroPanel extends StatelessWidget {
                     ReadyTab.look => ReadyLookTab(
                       selected: selectedTheme,
                       onChanged: onThemeChanged,
+                      selectedSkin: selectedSkin,
+                      onSkinChanged: onSkinChanged,
                     ),
                     ReadyTab.stats => ReadyStatsTab(
                       stats: stats,
