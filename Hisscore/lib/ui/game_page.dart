@@ -23,6 +23,7 @@ import 'particles.dart';
 import 'ready_tabs.dart';
 import 'screen_shake.dart';
 import 'share_card.dart';
+import 'snake_skin.dart';
 import 'theme.dart';
 
 class GamePage extends StatefulWidget {
@@ -201,6 +202,7 @@ class _GamePageState extends State<GamePage>
     final loadedStats = await widget.highScoreStore.loadStats();
     final loadedDaily = await widget.highScoreStore.loadDailyState();
     final themeId = await widget.highScoreStore.loadThemeId();
+    final skinId = await widget.highScoreStore.loadSkinId();
     if (!mounted) return;
     setState(() {
       highScore = value;
@@ -208,8 +210,9 @@ class _GamePageState extends State<GamePage>
       stats = loadedStats;
       dailyState = loadedDaily;
     });
-    if (themeId != null) {
-      RetroColors.current = GameTheme.byId(themeId);
+    if (themeId != null || skinId != null) {
+      if (themeId != null) RetroColors.current = GameTheme.byId(themeId);
+      if (skinId != null) SnakeSkin.current = SnakeSkin.byId(skinId);
       _rebuildAll();
     }
   }
@@ -587,6 +590,11 @@ class _GamePageState extends State<GamePage>
     _rebuildAll();
   }
 
+  void _setSkin(SnakeSkin skin) {
+    setState(() => SnakeSkin.current = skin);
+    unawaited(widget.highScoreStore.saveSkinId(skin.id));
+  }
+
   void _rebuildAll() {
     void visit(Element element) {
       element.markNeedsBuild();
@@ -945,6 +953,8 @@ class _GamePageState extends State<GamePage>
               onStartDaily: _startDailyChallenge,
               selectedTheme: RetroColors.current,
               onThemeChanged: _setTheme,
+              selectedSkin: SnakeSkin.current,
+              onSkinChanged: _setSkin,
             ),
           ],
         );

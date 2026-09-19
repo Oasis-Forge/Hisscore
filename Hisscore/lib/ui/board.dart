@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../game/food_types.dart';
 import '../game/snake_engine.dart';
 import 'particles.dart';
+import 'snake_skin.dart';
 import 'theme.dart';
 
 class SnakeBoard extends StatefulWidget {
@@ -215,16 +216,17 @@ class SnakeBoardPainter extends CustomPainter {
     }
 
     // ── Snake glow pass ──
+    final skin = SnakeSkin.current;
     for (var i = engine.snake.length - 1; i >= 0; i--) {
       final rect = _segmentRect(i, cellW, cellH).inflate(cellW * 0.12);
       final t = engine.snake.length > 1 ? i / (engine.snake.length - 1) : 0.0;
-      final glowColor = Color.lerp(
-        RetroColors.phosphorHot,
-        RetroColors.snakeTail,
-        t,
-      )!;
+      final glowColor = skin == SnakeSkin.classic
+          ? Color.lerp(RetroColors.phosphorHot, RetroColors.snakeTail, t)!
+          : skin.bodyColor(i: i, t: t, elapsedMs: engine.elapsedMs);
       final glowPaint = Paint()
-        ..color = glowColor.withValues(alpha: 0.12)
+        ..color = glowColor.withValues(
+          alpha: skin == SnakeSkin.neon ? 0.35 : 0.12,
+        )
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, Radius.circular(cellW * 0.25)),
@@ -242,20 +244,30 @@ class SnakeBoardPainter extends CustomPainter {
         i,
         cellW,
         cellH,
-      ).deflate(cellW * (0.08 + 0.14 * t));
+      ).deflate(cellW * (0.08 + 0.14 * t * skin.taper));
 
-      final bodyColor = isHead
-          ? RetroColors.phosphorHot
-          : Color.lerp(RetroColors.phosphor, RetroColors.snakeTail, t)!;
-
-      final bodyPaint = Paint()..color = bodyColor;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(cellW * 0.18)),
-        bodyPaint,
+      final bodyColor = skin.bodyColor(i: i, t: t, elapsedMs: engine.elapsedMs);
+      final bodyRRect = RRect.fromRectAndRadius(
+        rect,
+        Radius.circular(cellW * skin.cornerRadius),
       );
+      if (skin == SnakeSkin.neon) {
+        // Hollow: a dark fill so the grid doesn't show through, and a
+        // bright outline.
+        canvas.drawRRect(bodyRRect, Paint()..color = RetroColors.screen);
+        canvas.drawRRect(
+          bodyRRect,
+          Paint()
+            ..color = bodyColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = cellW * 0.12,
+        );
+      } else {
+        canvas.drawRRect(bodyRRect, Paint()..color = bodyColor);
+      }
 
       // ── Connecting segments (fill gaps between adjacent segments) ──
-      if (i < engine.snake.length - 1) {
+      if (skin.hasConnectors && i < engine.snake.length - 1) {
         final here = rect.center;
         final behind = _segmentRect(i + 1, cellW, cellH).center;
         final dx = behind.dx - here.dx;
@@ -275,11 +287,9 @@ class SnakeBoardPainter extends CustomPainter {
             width: (dx != 0 ? cellW * 0.6 : cellW * 0.65) * taper,
             height: (dy != 0 ? cellH * 0.6 : cellH * 0.65) * taper,
           );
-          final connColor = Color.lerp(
-            RetroColors.phosphor,
-            RetroColors.snakeTail,
-            t,
-          )!;
+          final connColor = skin == SnakeSkin.rainbow
+              ? bodyColor
+              : Color.lerp(RetroColors.phosphor, RetroColors.snakeTail, t)!;
           canvas.drawRRect(
             RRect.fromRectAndRadius(connRect, Radius.circular(cellW * 0.15)),
             Paint()..color = connColor,
