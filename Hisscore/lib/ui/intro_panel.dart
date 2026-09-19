@@ -38,42 +38,56 @@ class IntroPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      // Dark enough to read against, sheer enough to keep the demo
-      // visible behind it.
-      color: const Color(0xCC03140A),
+      // Only a light tint over the screen: the demo is the hero, and the
+      // menu sits on its own card so it stays readable.
+      color: const Color(0x3303140A),
       child: Center(
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Opacity(
-                opacity: blinkOn ? 1 : 0.35,
-                child: Text(
-                  'PRESS START',
-                  textAlign: TextAlign.center,
-                  style: RetroText.pixel(size: 14, color: RetroColors.amber),
-                ),
+          padding: const EdgeInsets.all(12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xE603140A),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: RetroColors.phosphorDim, width: 1.5),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Opacity(
+                    opacity: blinkOn ? 1 : 0.35,
+                    child: Text(
+                      'PRESS START',
+                      textAlign: TextAlign.center,
+                      style: RetroText.pixel(
+                        size: 14,
+                        color: RetroColors.amber,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ReadyTabBar(selected: readyTab, onChanged: onReadyTabChanged),
+                  const SizedBox(height: 14),
+                  switch (readyTab) {
+                    ReadyTab.modes => ReadyModesTab(
+                      selectedMode: selectedMode,
+                      onModeChanged: onModeChanged,
+                      dailyDayNumber: dailyDayNumber,
+                      dailyState: dailyState,
+                      playedDailyToday: playedDailyToday,
+                      onStartDaily: onStartDaily,
+                    ),
+                    ReadyTab.how => const ReadyHowTab(),
+                    ReadyTab.stats => ReadyStatsTab(
+                      stats: stats,
+                      topScores: topScores,
+                      dailyState: dailyState,
+                    ),
+                  },
+                ],
               ),
-              const SizedBox(height: 14),
-              ReadyTabBar(selected: readyTab, onChanged: onReadyTabChanged),
-              const SizedBox(height: 14),
-              switch (readyTab) {
-                ReadyTab.modes => ReadyModesTab(
-                  selectedMode: selectedMode,
-                  onModeChanged: onModeChanged,
-                  dailyDayNumber: dailyDayNumber,
-                  dailyState: dailyState,
-                  playedDailyToday: playedDailyToday,
-                  onStartDaily: onStartDaily,
-                ),
-                ReadyTab.how => const ReadyHowTab(),
-                ReadyTab.stats => ReadyStatsTab(
-                  stats: stats,
-                  topScores: topScores,
-                  dailyState: dailyState,
-                ),
-              },
-            ],
+            ),
           ),
         ),
       ),
