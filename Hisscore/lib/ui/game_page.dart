@@ -209,6 +209,7 @@ class _GamePageState extends State<GamePage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _onlineListenable?.addListener(_onOnlineChanged);
     engine = widget.engineFactory?.call() ?? SnakeEngine(mode: selectedMode);
     pulse = AnimationController(
       vsync: this,
@@ -222,6 +223,18 @@ class _GamePageState extends State<GamePage>
     unawaited(soundManager.init());
     unawaited(notificationService.init());
     _startDemo();
+  }
+
+  /// The boards, if they can change under us (the real one connects in the
+  /// background); the no-op and test boards never change.
+  Listenable? get _onlineListenable {
+    final online = widget.onlineScores;
+    return online is Listenable ? online as Listenable : null;
+  }
+
+  /// The boards connected (or dropped): redraw so the STATS tab shows them.
+  void _onOnlineChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Leaving the foreground must not cost the player a run: a call or a
@@ -820,6 +833,7 @@ class _GamePageState extends State<GamePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _onlineListenable?.removeListener(_onOnlineChanged);
     ticker?.cancel();
     demoTicker?.cancel();
     for (final t in _labelTimers) {

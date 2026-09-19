@@ -6,6 +6,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// The global leaderboard uses Firebase. Without google-services.json (a fork,
+// or a checkout that has not been given one) the plugin is skipped: the app
+// still builds, and at runtime it simply has no online boards.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Release signing comes from android/key.properties, which is
 // gitignored and never committed. Without it the build falls back to
 // debug keys — fine for sideloading a test APK, rejected by the Play

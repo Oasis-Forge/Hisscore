@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1060113365475",
+    "project_id": "oasisforge-hisscore",
+    "storage_bucket": "oasisforge-hisscore.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1060113365475:android:cb16afd57758b374da88d6",
+        "android_client_info": {
+          "package_name": "com.oasisforge.hisscore"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQYGku2MsE-WiR41bqyH6jUi_A4vjaEaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
