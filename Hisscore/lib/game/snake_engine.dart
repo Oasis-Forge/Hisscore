@@ -189,6 +189,10 @@ class SnakeEngine {
   int totalTicks = 0;
   int totalApplesEaten = 0;
 
+  /// Pickups other than apples eaten this run (star, shield, speed, shrink,
+  /// magnet), for quests.
+  int powerUpsCollected = 0;
+
   /// In-game clock, advanced by [tickInterval] on every tick. Keeps all
   /// timed mechanics on wall-clock durations while staying fully
   /// deterministic for tests (no DateTime).
@@ -231,6 +235,7 @@ class SnakeEngine {
     phase = GamePhase.ready;
     totalTicks = 0;
     totalApplesEaten = 0;
+    powerUpsCollected = 0;
     elapsedMs = 0;
 
     // Combo
@@ -408,6 +413,8 @@ class SnakeEngine {
       // Remove the tail we just added (snake moved but shouldn't grow).
       if (snake.length > 1) snake.removeLast();
     }
+
+    if (eaten.type != FoodType.apple) powerUpsCollected++;
 
     switch (eaten.type) {
       case FoodType.apple:

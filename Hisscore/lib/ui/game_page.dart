@@ -12,6 +12,7 @@ import '../game/food_types.dart';
 import '../game/high_score_store.dart';
 import '../game/notification_service.dart';
 import '../game/online_scores.dart';
+import '../game/quests.dart';
 import '../game/review_prompter.dart';
 import '../game/snake_engine.dart';
 import '../game/sound_manager.dart';
@@ -179,6 +180,18 @@ class _GamePageState extends State<GamePage>
   /// The player's chosen handle for the global boards, if any.
   String? _playerName;
 
+  /// XP, level and quest progress, and what the last finished run changed.
+  PlayerProgress _progress = const PlayerProgress();
+  RunOutcome? _outcome;
+
+  /// Which page of the STATS tab is showing.
+  StatsView _statsView = StatsView.local;
+
+  String get _todayKey => DailyChallenge.dateKey(DateTime.now());
+
+  /// Progress as of today: yesterday's quest state is dropped, XP kept.
+  PlayerProgress get _todayProgress => Quests.rolled(_progress, _todayKey);
+
   String get _displayName =>
       _playerName ?? PlayerName.defaultFor(widget.onlineScores.playerId ?? '');
 
@@ -244,6 +257,7 @@ class _GamePageState extends State<GamePage>
     final themeId = await widget.highScoreStore.loadThemeId();
     final skinId = await widget.highScoreStore.loadSkinId();
     final savedName = await widget.highScoreStore.loadPlayerName();
+    final savedProgress = await widget.highScoreStore.loadProgress();
     if (!mounted) return;
     setState(() {
       highScore = value;
@@ -251,6 +265,7 @@ class _GamePageState extends State<GamePage>
       stats = loadedStats;
       dailyState = loadedDaily;
       _playerName = savedName;
+      _progress = savedProgress;
     });
     if (themeId != null || skinId != null) {
       if (themeId != null) RetroColors.current = GameTheme.byId(themeId);
@@ -310,7 +325,30 @@ class _GamePageState extends State<GamePage>
     if (isDailyRun) {
       await _persistDailyResult();
     }
+    await _recordProgress();
     unawaited(_submitOnline());
+  }
+
+  /// Pays out XP for the run just finished and moves today's quests
+  /// along, and remembers what changed so the game-over card can show it.
+  Future<void> _recordProgress() async {
+    final outcome = Quests.apply(
+      _progress,
+      RunSummary(
+        apples: engine.totalApplesEaten,
+        score: engine.score,
+        bestCombo: engine.bestCombo,
+        powerUps: engine.powerUpsCollected,
+      ),
+      dayNumber: _dailyDayNumber,
+      dayKey: _todayKey,
+    );
+    await widget.highScoreStore.saveProgress(outcome.progress);
+    if (!mounted) return;
+    setState(() {
+      _progress = outcome.progress;
+      _outcome = outcome;
+    });
   }
 
   /// Posts this run to the global boards, best-effort: a missing backend or
@@ -565,6 +603,7 @@ class _GamePageState extends State<GamePage>
         return;
       }
       newHighScore = false;
+      _outcome = null;
       if (engine.phase == GamePhase.gameOver ||
           engine.phase == GamePhase.ready) {
         // A fresh run always gets an engine sized to this screen.
@@ -597,6 +636,7 @@ class _GamePageState extends State<GamePage>
       engine.reset();
       engine.phase = GamePhase.ready;
       newHighScore = false;
+      _outcome = null;
       isDailyRun = false;
       challenge = null;
       showIntro = true;
@@ -654,6 +694,7 @@ class _GamePageState extends State<GamePage>
       isDailyRun = true;
       challenge = null;
       newHighScore = false;
+      _outcome = null;
       showIntro = false;
       particleSystem.clear();
       floatingLabels.clear();
@@ -680,6 +721,7 @@ class _GamePageState extends State<GamePage>
       isDailyRun = false;
       challenge = code;
       newHighScore = false;
+      _outcome = null;
       showIntro = false;
       particleSystem.clear();
       floatingLabels.clear();
@@ -1107,6 +1149,14 @@ class _GamePageState extends State<GamePage>
               online: widget.onlineScores,
               playerName: _displayName,
               onEditName: _editName,
+              statsView: _statsView,
+              onStatsViewChanged: (v) => setState(() => _statsView = v),
+              progress: _todayProgress,
+              quests: Quests.forDay(_dailyDayNumber),
+              onOpenQuests: () => setState(() {
+                readyTab = ReadyTab.stats;
+                _statsView = StatsView.quests;
+              }),
               selectedTheme: RetroColors.current,
               onThemeChanged: _setTheme,
               selectedSkin: SnakeSkin.current,
@@ -1243,6 +1293,7 @@ class _GamePageState extends State<GamePage>
                 newHighScore: newHighScore,
                 isDailyRun: isDailyRun,
                 challengeCode: challenge?.text,
+                outcome: _outcome,
                 dailyDayNumber: _dailyDayNumber,
                 dailyState: dailyState,
                 onShare: _shareScore,

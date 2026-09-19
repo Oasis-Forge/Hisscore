@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
 import '../game/online_scores.dart';
+import '../game/quests.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'game_overlay.dart';
 import 'online_board.dart';
+import 'quests_view.dart';
 import 'snake_skin.dart';
 import 'theme.dart';
 
@@ -92,6 +94,8 @@ class ReadyModesTab extends StatelessWidget {
     required this.onStartDaily,
     required this.onNewChallenge,
     required this.onEnterCode,
+    required this.questSummary,
+    required this.onOpenQuests,
   });
 
   final GameMode selectedMode;
@@ -106,6 +110,12 @@ class ReadyModesTab extends StatelessWidget {
 
   /// Type in a friend's code and play their game.
   final VoidCallback onEnterCode;
+
+  /// One line on today's quests, e.g. `QUESTS 1/3  ·  LVL 2`.
+  final String questSummary;
+
+  /// Jump to the quests page.
+  final VoidCallback onOpenQuests;
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +146,14 @@ class ReadyModesTab extends StatelessWidget {
               onPressed: onEnterCode,
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: onOpenQuests,
+          child: Text(
+            questSummary,
+            style: RetroText.pixel(size: 7, color: RetroColors.amber),
+          ),
         ),
       ],
     );
@@ -180,12 +198,30 @@ class ReadyHowTab extends StatelessWidget {
   }
 }
 
-class ReadyStatsTab extends StatefulWidget {
+/// Which page of the STATS tab is showing.
+enum StatsView {
+  quests('QUESTS'),
+  local('LOCAL'),
+  daily('TODAY'),
+  allTime('ALL-TIME');
+
+  const StatsView(this.label);
+  final String label;
+
+  /// The global boards need a backend; the others always work.
+  bool get needsOnline => this == daily || this == allTime;
+}
+
+class ReadyStatsTab extends StatelessWidget {
   const ReadyStatsTab({
     super.key,
     required this.stats,
     required this.topScores,
     required this.dailyState,
+    this.view = StatsView.local,
+    this.onViewChanged,
+    this.progress = const PlayerProgress(),
+    this.quests = const [],
     this.online = const NoopOnlineScoreBoard(),
     this.dailyDayNumber = 1,
     this.mode = GameMode.classic,
@@ -197,8 +233,15 @@ class ReadyStatsTab extends StatefulWidget {
   final List<ScoreEntry> topScores;
   final DailyState dailyState;
 
-  /// The global boards. When it is not available the tab shows only the
-  /// on-device stats, as before.
+  final StatsView view;
+  final ValueChanged<StatsView>? onViewChanged;
+
+  /// Level, XP and today's quest state (already rolled over to today).
+  final PlayerProgress progress;
+  final List<Quest> quests;
+
+  /// The global boards. When it is not available only the views that work
+  /// offline are offered.
   final OnlineScoreBoard online;
   final int dailyDayNumber;
 
@@ -208,44 +251,32 @@ class ReadyStatsTab extends StatefulWidget {
   final VoidCallback? onEditName;
 
   @override
-  State<ReadyStatsTab> createState() => _ReadyStatsTabState();
-}
-
-enum _StatsView {
-  local('LOCAL'),
-  daily('TODAY'),
-  allTime('ALL-TIME');
-
-  const _StatsView(this.label);
-  final String label;
-}
-
-class _ReadyStatsTabState extends State<ReadyStatsTab> {
-  _StatsView _view = _StatsView.local;
-
-  @override
   Widget build(BuildContext context) {
-    if (!widget.online.available) return _local();
+    final views = [
+      for (final v in StatsView.values)
+        if (!v.needsOnline || online.available) v,
+    ];
+    final current = views.contains(view) ? view : StatsView.local;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final v in _StatsView.values) ...[
-              if (v != _StatsView.values.first) const SizedBox(width: 10),
+            for (final v in views) ...[
+              if (v != views.first) const SizedBox(width: 10),
               GestureDetector(
-                onTap: () => setState(() => _view = v),
+                onTap: () => onViewChanged?.call(v),
                 child: Text(
                   v.label,
                   style:
                       RetroText.pixel(
                         size: 8,
-                        color: v == _view
+                        color: v == current
                             ? RetroColors.phosphorHot
                             : RetroColors.phosphorDim,
                       ).copyWith(
-                        decoration: v == _view
+                        decoration: v == current
                             ? TextDecoration.underline
                             : null,
                         decorationColor: RetroColors.phosphorHot,
@@ -256,42 +287,40 @@ class _ReadyStatsTabState extends State<ReadyStatsTab> {
           ],
         ),
         const SizedBox(height: 12),
-        switch (_view) {
-          _StatsView.local => _local(),
-          _StatsView.daily => OnlineBoardView(
-            scores: widget.online,
-            board: BoardId.daily(widget.dailyDayNumber),
+        switch (current) {
+          StatsView.quests => QuestsView(progress: progress, quests: quests),
+          StatsView.local => _local(),
+          StatsView.daily => OnlineBoardView(
+            scores: online,
+            board: BoardId.daily(dailyDayNumber),
           ),
-          _StatsView.allTime => OnlineBoardView(
-            scores: widget.online,
-            board: BoardId.allTime(widget.mode),
+          StatsView.allTime => OnlineBoardView(
+            scores: online,
+            board: BoardId.allTime(mode),
           ),
         },
-        if (_view != _StatsView.local) ...[
+        if (current.needsOnline) ...[
           const SizedBox(height: 4),
           Text(
-            _view == _StatsView.daily
-                ? 'DAILY #${widget.dailyDayNumber}'
-                : widget.mode.label,
+            current == StatsView.daily ? 'DAILY #$dailyDayNumber' : mode.label,
             style: RetroText.pixel(size: 7, color: RetroColors.metal),
           ),
         ],
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: widget.onEditName,
-          child: Text(
-            'YOU: ${widget.playerName}  [EDIT]',
-            style: RetroText.pixel(size: 7, color: RetroColors.zenBlue),
+        if (online.available) ...[
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onEditName,
+            child: Text(
+              'YOU: $playerName  [EDIT]',
+              style: RetroText.pixel(size: 7, color: RetroColors.zenBlue),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   Widget _local() {
-    final stats = widget.stats;
-    final topScores = widget.topScores;
-    final dailyState = widget.dailyState;
     if (stats.gamesPlayed == 0 && topScores.isEmpty) {
       return Text(
         'NO RUNS YET',

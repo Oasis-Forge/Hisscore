@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
+import '../game/quests.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'theme.dart';
@@ -16,6 +17,7 @@ class GameOverlay extends StatelessWidget {
     required this.newHighScore,
     required this.isDailyRun,
     this.challengeCode,
+    this.outcome,
     required this.dailyDayNumber,
     required this.dailyState,
     required this.onShare,
@@ -31,6 +33,9 @@ class GameOverlay extends StatelessWidget {
 
   /// The code of a friend-challenge run, shown so it can be passed on.
   final String? challengeCode;
+
+  /// What the run just finished paid out: XP, quests, a new level.
+  final RunOutcome? outcome;
   final int dailyDayNumber;
   final DailyState dailyState;
   final VoidCallback onShare;
@@ -82,6 +87,10 @@ class GameOverlay extends StatelessWidget {
                       'CHALLENGE $challengeCode',
                       style: RetroText.pixel(size: 8, color: RetroColors.amber),
                     ),
+                  ],
+                  if (outcome != null) ...[
+                    const SizedBox(height: 10),
+                    _ProgressLines(outcome: outcome!),
                   ],
                   if (newHighScore) ...[
                     const SizedBox(height: 12),
@@ -205,6 +214,43 @@ class StatsRow extends StatelessWidget {
             ],
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// "+N XP", each quest the run finished, and a level-up.
+class _ProgressLines extends StatelessWidget {
+  const _ProgressLines({required this.outcome});
+
+  final RunOutcome outcome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '+${outcome.xpGained} XP',
+          style: RetroText.pixel(size: 8, color: RetroColors.phosphorHot),
+        ),
+        for (final quest in outcome.completedNow)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'QUEST DONE: ${quest.title}',
+              textAlign: TextAlign.center,
+              style: RetroText.pixel(size: 7, color: RetroColors.amber),
+            ),
+          ),
+        if (outcome.leveledUp)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'LEVEL UP! LEVEL ${outcome.levelAfter}',
+              style: RetroText.pixel(size: 10, color: RetroColors.amber),
+            ),
+          ),
       ],
     );
   }
