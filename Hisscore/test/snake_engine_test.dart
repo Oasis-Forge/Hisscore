@@ -157,9 +157,9 @@ void main() {
       expect(game.justAte, isTrue, reason: 'Apple ${i + 2} not eaten');
     }
 
-    // After 4 apples, speed should have decreased by 12ms.
+    // After 4 apples, speed should have decreased by 10ms.
     expect(game.foodsEaten, 4);
-    expect(game.tickInterval, const Duration(milliseconds: 128));
+    expect(game.tickInterval, const Duration(milliseconds: 130));
   });
 
   // ═══════════════════════════════════════════════════
@@ -433,7 +433,10 @@ void main() {
   // ═══════════════════════════════════════════════════
 
   test('combo window holds the same real time after the game speeds up', () {
-    final slow = engine(firstFoodDistance: 20);
+    final slow = SnakeEngine(
+      initialTick: const Duration(milliseconds: 240),
+      random: Random(1),
+    );
     slow.start();
     slow.tick();
     final slowTicks =
