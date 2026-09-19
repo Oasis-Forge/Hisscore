@@ -116,6 +116,7 @@ class IntroPanel extends StatelessWidget {
                     ),
                     ReadyTab.how => const ReadyHowTab(),
                     ReadyTab.look => ReadyLookTab(
+                      level: progress.level,
                       selected: selectedTheme,
                       onChanged: onThemeChanged,
                       selectedSkin: selectedSkin,

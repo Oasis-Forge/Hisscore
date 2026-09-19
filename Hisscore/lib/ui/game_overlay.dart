@@ -5,6 +5,7 @@ import '../game/quests.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'theme.dart';
+import 'unlocks.dart';
 
 // ─── GameOverlay (paused / game-over) ───────────────────
 
@@ -251,6 +252,18 @@ class _ProgressLines extends StatelessWidget {
               style: RetroText.pixel(size: 10, color: RetroColors.amber),
             ),
           ),
+        if (outcome.leveledUp)
+          for (final unlock in unlocksBetween(
+            outcome.levelBefore,
+            outcome.levelAfter,
+          ))
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'UNLOCKED: $unlock',
+                style: RetroText.pixel(size: 8, color: RetroColors.phosphorHot),
+              ),
+            ),
       ],
     );
   }

@@ -83,6 +83,7 @@ class GameTheme {
   const GameTheme({
     required this.id,
     required this.label,
+    this.unlockLevel = 1,
     required this.voidBg,
     required this.cabinet,
     required this.cabinetRim,
@@ -103,6 +104,9 @@ class GameTheme {
 
   final String id;
   final String label;
+
+  /// The player level this look is earned at.
+  final int unlockLevel;
   final Color voidBg;
   final Color cabinet;
   final Color cabinetRim;
@@ -146,6 +150,7 @@ class GameTheme {
   static const amberTerminal = GameTheme(
     id: 'amber',
     label: 'AMBER',
+    unlockLevel: 2,
     voidBg: Color(0xFF0A0804),
     cabinet: Color(0xFF17120C),
     cabinetRim: Color(0xFF3A2C18),
@@ -168,6 +173,7 @@ class GameTheme {
   static const gameBoy = GameTheme(
     id: 'gameboy',
     label: 'GAME BOY',
+    unlockLevel: 4,
     voidBg: Color(0xFF0B0F0A),
     cabinet: Color(0xFF3A3F36),
     cabinetRim: Color(0xFF555B4C),
@@ -190,6 +196,7 @@ class GameTheme {
   static const synthwave = GameTheme(
     id: 'synthwave',
     label: 'SYNTHWAVE',
+    unlockLevel: 6,
     voidBg: Color(0xFF0A0614),
     cabinet: Color(0xFF1A0F2E),
     cabinetRim: Color(0xFF4A2A7A),

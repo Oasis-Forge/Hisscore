@@ -6,21 +6,24 @@ import 'theme.dart';
 /// skin and a theme combine freely.
 enum SnakeSkin {
   /// The original tapered, glowing body.
-  classic('classic', 'CLASSIC'),
+  classic('classic', 'CLASSIC', 1),
 
   /// Square, gapless pixels in a two-tone checker, like an old handheld.
-  pixel('pixel', 'PIXEL'),
+  pixel('pixel', 'PIXEL', 3),
 
   /// A hollow outline that glows.
-  neon('neon', 'NEON'),
+  neon('neon', 'NEON', 5),
 
   /// A hue that ripples down the body.
-  rainbow('rainbow', 'RAINBOW');
+  rainbow('rainbow', 'RAINBOW', 8);
 
-  const SnakeSkin(this.id, this.label);
+  const SnakeSkin(this.id, this.label, this.unlockLevel);
 
   final String id;
   final String label;
+
+  /// The player level this skin is earned at.
+  final int unlockLevel;
 
   /// The active skin, read by the board painter.
   static SnakeSkin current = SnakeSkin.classic;
