@@ -104,9 +104,9 @@ class _SnakeBoardState extends State<SnakeBoard> {
         decoration: BoxDecoration(
           color: RetroColors.screen,
           border: Border.all(color: RetroColors.phosphorDim, width: 2),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x6600FF66),
+              color: RetroColors.phosphor.withValues(alpha: 0.4),
               blurRadius: 18,
               spreadRadius: 1,
             ),
@@ -139,10 +139,11 @@ class BoardLayerCache {
 class _CachedPicture {
   ui.Picture? _picture;
   Size? _size;
+  GameTheme? _theme;
 
   ui.Picture forSize(Size size, void Function(Canvas) draw) {
     final cached = _picture;
-    if (cached != null && _size == size) {
+    if (cached != null && _size == size && _theme == RetroColors.current) {
       return cached;
     }
     cached?.dispose();
@@ -151,6 +152,7 @@ class _CachedPicture {
     final picture = recorder.endRecording();
     _picture = picture;
     _size = size;
+    _theme = RetroColors.current;
     return picture;
   }
 

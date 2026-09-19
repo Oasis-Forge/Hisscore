@@ -21,6 +21,8 @@ class IntroPanel extends StatelessWidget {
     required this.dailyState,
     required this.playedDailyToday,
     required this.onStartDaily,
+    required this.selectedTheme,
+    required this.onThemeChanged,
   });
 
   final bool blinkOn;
@@ -34,19 +36,21 @@ class IntroPanel extends StatelessWidget {
   final DailyState dailyState;
   final bool playedDailyToday;
   final VoidCallback onStartDaily;
+  final GameTheme selectedTheme;
+  final ValueChanged<GameTheme> onThemeChanged;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       // Only a light tint over the screen: the demo is the hero, and the
       // menu sits on its own card so it stays readable.
-      color: const Color(0x3303140A),
+      color: RetroColors.screen.withValues(alpha: 0.2),
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(12),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xE603140A),
+              color: RetroColors.screen.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: RetroColors.phosphorDim, width: 1.5),
             ),
@@ -79,6 +83,10 @@ class IntroPanel extends StatelessWidget {
                       onStartDaily: onStartDaily,
                     ),
                     ReadyTab.how => const ReadyHowTab(),
+                    ReadyTab.look => ReadyLookTab(
+                      selected: selectedTheme,
+                      onChanged: onThemeChanged,
+                    ),
                     ReadyTab.stats => ReadyStatsTab(
                       stats: stats,
                       topScores: topScores,

@@ -14,7 +14,8 @@ import 'theme.dart';
 enum ReadyTab {
   modes('MODES'),
   how('HOW'),
-  stats('STATS');
+  stats('STATS'),
+  look('LOOK');
 
   const ReadyTab(this.label);
   final String label;
@@ -43,7 +44,7 @@ class ReadyTabBar extends StatelessWidget {
             onTap: () => onChanged(tab),
             child: AnimatedContainer(
               duration: _tabFade,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: tab == selected
                     ? RetroColors.phosphor
@@ -304,6 +305,103 @@ class TopScoresList extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Pick the cabinet's look. Each chip is drawn in its own theme's colors
+/// so the choice previews itself.
+class ReadyLookTab extends StatelessWidget {
+  const ReadyLookTab({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final GameTheme selected;
+  final ValueChanged<GameTheme> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'SELECT LOOK',
+          style: RetroText.pixel(size: 9, color: RetroColors.phosphorDim),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final theme in GameTheme.all)
+              _ThemeChip(
+                theme: theme,
+                isSelected: theme.id == selected.id,
+                onTap: () => onChanged(theme),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeChip extends StatelessWidget {
+  const _ThemeChip({
+    required this.theme,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final GameTheme theme;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: theme.label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.screen,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isSelected ? theme.phosphor : theme.phosphorDim,
+              width: isSelected ? 2.5 : 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                theme.label,
+                style: RetroText.pixel(size: 8, color: theme.phosphor),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final c in [theme.phosphor, theme.amber, theme.food])
+                    Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      color: c,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

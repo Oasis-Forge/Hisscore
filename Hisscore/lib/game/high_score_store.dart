@@ -94,6 +94,12 @@ abstract class HighScoreStore {
   Future<void> updateStats(SnakeEngine engine);
   Future<DailyState> loadDailyState();
   Future<void> saveDailyState(DailyState state);
+
+  /// Id of the chosen [GameTheme] (see `ui/theme.dart`), or null if the
+  /// player has never picked one. Kept as a plain string so this layer
+  /// stays free of UI types.
+  Future<String?> loadThemeId();
+  Future<void> saveThemeId(String id);
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -105,6 +111,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   final List<ScoreEntry> _scores = [];
   final GameStats _stats = GameStats();
   DailyState _daily = const DailyState();
+  String? _themeId;
 
   @override
   Future<int> load() async => value;
@@ -149,6 +156,12 @@ class InMemoryHighScoreStore implements HighScoreStore {
 
   @override
   Future<void> saveDailyState(DailyState state) async => _daily = state;
+
+  @override
+  Future<String?> loadThemeId() async => _themeId;
+
+  @override
+  Future<void> saveThemeId(String id) async => _themeId = id;
 }
 
 // ─── SharedPreferences (production) ─────────────────
@@ -160,6 +173,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _topScoresKey = 'hisscore.top_scores';
   static const _statsKey = 'hisscore.stats';
   static const _dailyKey = 'hisscore.daily_state';
+  static const _themeKey = 'hisscore.theme';
 
   final String key;
   SharedPreferences? _prefs;
@@ -254,5 +268,17 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> saveDailyState(DailyState state) async {
     await init();
     await _prefs!.setString(_dailyKey, jsonEncode(state.toJson()));
+  }
+
+  @override
+  Future<String?> loadThemeId() async {
+    await init();
+    return _prefs!.getString(_themeKey);
+  }
+
+  @override
+  Future<void> saveThemeId(String id) async {
+    await init();
+    await _prefs!.setString(_themeKey, id);
   }
 }

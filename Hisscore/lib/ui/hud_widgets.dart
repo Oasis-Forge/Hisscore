@@ -10,12 +10,12 @@ class MiniStat extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
-    this.color = RetroColors.phosphor,
+    this.color,
   });
 
   final String label;
   final String value;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,13 @@ class MiniStat extends StatelessWidget {
             style: RetroText.pixel(size: 6, color: RetroColors.phosphorDim),
           ),
         if (label.isNotEmpty) const SizedBox(height: 2),
-        Text(value, style: RetroText.pixel(size: 11, color: color)),
+        Text(
+          value,
+          style: RetroText.pixel(
+            size: 11,
+            color: color ?? RetroColors.phosphor,
+          ),
+        ),
       ],
     );
   }
@@ -62,7 +68,7 @@ class PauseButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: RetroColors.phosphorDim, width: 1.4),
           ),
-          child: const Icon(Icons.pause, size: 20, color: RetroColors.phosphor),
+          child: Icon(Icons.pause, size: 20, color: RetroColors.phosphor),
         ),
       ),
     );
