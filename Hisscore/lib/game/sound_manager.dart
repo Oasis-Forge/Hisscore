@@ -159,6 +159,22 @@ class SoundManager {
     if (_layers.isNotEmpty) return;
     for (final name in _musicLayers) {
       final player = AudioPlayer();
+      // Three players share one soundtrack. If each asked for audio focus
+      // (the default), Android would hand it to the last one and pause the
+      // others, leaving only a single layer. Don't take focus, and mix with
+      // whatever else is playing.
+      try {
+        await player.setAudioContext(
+          AudioContext(
+            android: const AudioContextAndroid(
+              audioFocus: AndroidAudioFocus.none,
+            ),
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
+          ),
+        );
+      } catch (e) {
+        debugPrint('SoundManager: could not set audio context ($e)');
+      }
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setSource(AssetSource('music/$name.wav'));
       _layers.add(player);

@@ -17,6 +17,12 @@ Keep output minimal — this burns real tokens:
 - Prefer targeted `flutter test path/to/file.dart` over the whole suite
   while iterating; run the full suite once before considering something
   done.
+- Verify changes on the Android emulator (`bash Hisscore/tool/emu.sh`,
+  see the `emulator` skill), not the web build. Web-only checks miss
+  platform behaviour (audio focus is one example).
+- Screenshots are for looks only; read the screen as text with
+  `emu.sh screen`. The settings deny `Read` on `*.png`, so to check a
+  color sample the pixel of a screencap instead of opening it.
 
 ## Product
 
