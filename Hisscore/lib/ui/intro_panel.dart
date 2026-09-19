@@ -22,6 +22,8 @@ class IntroPanel extends StatelessWidget {
     required this.dailyState,
     required this.playedDailyToday,
     required this.onStartDaily,
+    required this.onNewChallenge,
+    required this.onEnterCode,
     required this.selectedTheme,
     required this.onThemeChanged,
     required this.selectedSkin,
@@ -39,6 +41,8 @@ class IntroPanel extends StatelessWidget {
   final DailyState dailyState;
   final bool playedDailyToday;
   final VoidCallback onStartDaily;
+  final VoidCallback onNewChallenge;
+  final VoidCallback onEnterCode;
   final GameTheme selectedTheme;
   final ValueChanged<GameTheme> onThemeChanged;
   final SnakeSkin selectedSkin;
@@ -86,6 +90,8 @@ class IntroPanel extends StatelessWidget {
                       dailyState: dailyState,
                       playedDailyToday: playedDailyToday,
                       onStartDaily: onStartDaily,
+                      onNewChallenge: onNewChallenge,
+                      onEnterCode: onEnterCode,
                     ),
                     ReadyTab.how => const ReadyHowTab(),
                     ReadyTab.look => ReadyLookTab(

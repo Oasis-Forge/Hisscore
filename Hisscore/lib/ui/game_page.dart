@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../game/auto_player.dart';
+import '../game/challenge_code.dart';
 import '../game/daily_challenge.dart';
 import '../game/food_types.dart';
 import '../game/high_score_store.dart';
@@ -15,6 +16,7 @@ import '../game/snake_engine.dart';
 import '../game/sound_manager.dart';
 import 'board.dart';
 import 'controls.dart';
+import 'enter_code_dialog.dart';
 import 'floating_label.dart';
 import 'game_overlay.dart';
 import 'hud_widgets.dart';
@@ -131,12 +133,16 @@ class _GamePageState extends State<GamePage>
 
   /// Builds an engine sized to the current screen. Tests inject their
   /// own engine and keep whatever grid they asked for.
-  SnakeEngine _newEngine({GameMode? mode, Random? random, bool daily = false}) {
+  SnakeEngine _newEngine({
+    GameMode? mode,
+    Random? random,
+    bool fixedGrid = false,
+  }) {
     final injected = widget.engineFactory;
     if (injected != null && random == null) return injected();
-    // The daily is one fixed size on every device; everything else is
-    // shaped to the screen.
-    final grid = daily
+    // The daily and challenge codes are one fixed size on every device;
+    // everything else is shaped to the screen.
+    final grid = fixedGrid
         ? (columns: DailyChallenge.gridColumns, rows: DailyChallenge.gridRows)
         : boardGridFor(_playAreaSize);
     return SnakeEngine(
@@ -161,6 +167,9 @@ class _GamePageState extends State<GamePage>
   final notificationService = NotificationService();
   DailyState dailyState = const DailyState();
   bool isDailyRun = false;
+
+  /// Set while playing a friend's (or your own shared) challenge code.
+  ChallengeCode? challenge;
 
   int get _dailyDayNumber => DailyChallenge.dayNumber(DateTime.now());
 
@@ -509,6 +518,7 @@ class _GamePageState extends State<GamePage>
         engine = _newEngine();
         engine.mode = selectedMode;
         isDailyRun = false;
+        challenge = null;
       }
       particleSystem.clear();
       floatingLabels.clear();
@@ -535,6 +545,7 @@ class _GamePageState extends State<GamePage>
       engine.phase = GamePhase.ready;
       newHighScore = false;
       isDailyRun = false;
+      challenge = null;
       showIntro = true;
       particleSystem.clear();
       floatingLabels.clear();
@@ -583,11 +594,12 @@ class _GamePageState extends State<GamePage>
       engine = _newEngine(
         mode: GameMode.classic,
         random: Random(seed),
-        daily: true,
+        fixedGrid: true,
       );
       engine.mode = GameMode.classic;
       selectedMode = GameMode.classic;
       isDailyRun = true;
+      challenge = null;
       newHighScore = false;
       showIntro = false;
       particleSystem.clear();
@@ -597,6 +609,41 @@ class _GamePageState extends State<GamePage>
       focusNode.requestFocus();
     });
     _armTicker();
+  }
+
+  /// Starts the game a challenge code names: its mode, its seed, and the
+  /// daily's fixed grid, so everyone who plays the code plays the same board.
+  void _startChallenge(ChallengeCode code) {
+    _stopDemo();
+    setState(() {
+      ticker?.cancel();
+      engine = _newEngine(
+        mode: code.mode,
+        random: Random(code.seed),
+        fixedGrid: true,
+      );
+      engine.mode = code.mode;
+      selectedMode = code.mode;
+      isDailyRun = false;
+      challenge = code;
+      newHighScore = false;
+      showIntro = false;
+      particleSystem.clear();
+      floatingLabels.clear();
+      engine.start();
+      startedAt = DateTime.now();
+      focusNode.requestFocus();
+    });
+    _armTicker();
+  }
+
+  /// Asks for a friend's code and, if it is valid, plays it.
+  Future<void> _enterCode() async {
+    final code = await showDialog<ChallengeCode>(
+      context: context,
+      builder: (context) => const EnterCodeDialog(),
+    );
+    if (code != null && mounted) _startChallenge(code);
   }
 
   /// Applies [theme] everywhere and remembers it. Most widgets read the
@@ -633,6 +680,10 @@ class _GamePageState extends State<GamePage>
             bestCombo: engine.bestCombo,
             streak: dailyState.currentStreak,
           )
+        : challenge != null
+        ? 'HISCORE challenge ${challenge!.text} — ${engine.mode.label}'
+              ' — Score ${engine.score} 🐍\n'
+              'Beat it: ENTER CODE ${challenge!.text}'
         : 'HISSCORE — ${engine.mode.label} — Score ${engine.score}'
               '${engine.mode == GameMode.adventure ? ' (Level ${engine.level})' : ''} 🐍\n'
               'Can you beat it?';
@@ -644,6 +695,8 @@ class _GamePageState extends State<GamePage>
           engine: engine,
           subtitle: isDailyRun
               ? 'DAILY #$_dailyDayNumber  ·  STREAK ${dailyState.currentStreak}'
+              : challenge != null
+              ? '${engine.mode.label}  ·  ${challenge!.text}'
               : engine.mode.label,
         );
         files = [XFile.fromData(png, mimeType: 'image/png')];
@@ -995,6 +1048,9 @@ class _GamePageState extends State<GamePage>
               dailyState: dailyState,
               playedDailyToday: _playedDailyToday,
               onStartDaily: _startDailyChallenge,
+              onNewChallenge: () =>
+                  _startChallenge(ChallengeCode.random(selectedMode)),
+              onEnterCode: _enterCode,
               selectedTheme: RetroColors.current,
               onThemeChanged: _setTheme,
               selectedSkin: SnakeSkin.current,
@@ -1048,10 +1104,10 @@ class _GamePageState extends State<GamePage>
         // The board fills this area edge to edge, so its geometry is
         // simply the area itself — particles and popups ride on it.
         var area = constraints.biggest;
-        // The daily has a fixed shape; on a screen of another shape it is
-        // letterboxed rather than stretched.
+        // The daily and challenges have a fixed shape; on a screen of another
+        // shape they are letterboxed rather than stretched.
         final fixed =
-            isDailyRun &&
+            (isDailyRun || challenge != null) &&
             engine.columns == DailyChallenge.gridColumns &&
             engine.rows == DailyChallenge.gridRows;
         if (fixed) {
@@ -1130,6 +1186,7 @@ class _GamePageState extends State<GamePage>
                 won: engine.won,
                 newHighScore: newHighScore,
                 isDailyRun: isDailyRun,
+                challengeCode: challenge?.text,
                 dailyDayNumber: _dailyDayNumber,
                 dailyState: dailyState,
                 onShare: _shareScore,

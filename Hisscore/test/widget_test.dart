@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hisscore/game/challenge_code.dart';
 import 'package:hisscore/game/daily_challenge.dart';
 import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/snake_engine.dart';
@@ -172,6 +173,92 @@ void main() {
     // tall and keeps the daily's shape rather than filling the screen.
     final size = tester.getSize(find.byType(SnakeBoard));
     expect(size.width / size.height, closeTo(DailyChallenge.gridAspect, 0.01));
+  });
+
+  testWidgets('ENTER CODE plays a friend'
+      's game on the fixed grid', (tester) async {
+    await tester.pumpWidget(
+      HisscoreApp(highScoreStore: InMemoryHighScoreStore()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('ENTER CODE'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final code = ChallengeCode(mode: GameMode.hardcore, seed: 31337);
+    await tester.enterText(find.byType(TextField), code.text.toLowerCase());
+    await tester.tap(find.text('START'));
+    // Let the dialog finish closing, which is when a disposed controller
+    // would blow up.
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final engine = _painterOf(tester).engine;
+    expect(engine.mode, GameMode.hardcore);
+    expect(engine.columns, DailyChallenge.gridColumns);
+    expect(engine.rows, DailyChallenge.gridRows);
+    expect(engine.phase, GamePhase.running);
+  });
+
+  testWidgets('ENTER CODE can be cancelled and the menu still works', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      HisscoreApp(highScoreStore: InMemoryHighScoreStore()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('ENTER CODE'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField), 'C1');
+
+    await tester.tap(find.text('CANCEL'));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('PRESS START'), findsOneWidget);
+    // And a challenge can still be started afterwards.
+    await tester.tap(find.text('CHALLENGE'));
+    await tester.pump();
+    expect(_painterOf(tester).engine.phase, GamePhase.running);
+  });
+
+  testWidgets('ENTER CODE rejects a bad code and stays on the menu', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      HisscoreApp(highScoreStore: InMemoryHighScoreStore()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('ENTER CODE'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.enterText(find.byType(TextField), 'NOPE-NOPE');
+    await tester.tap(find.text('START'));
+    await tester.pump();
+
+    expect(find.text('INVALID CODE'), findsOneWidget);
+    expect(find.text('PRESS START'), findsOneWidget);
+  });
+
+  testWidgets('CHALLENGE starts a seeded game and shows its code at the end', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      HisscoreApp(highScoreStore: InMemoryHighScoreStore()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('CHALLENGE'));
+    await tester.pump();
+
+    final engine = _painterOf(tester).engine;
+    expect(engine.columns, DailyChallenge.gridColumns);
+    expect(engine.phase, GamePhase.running);
+
+    // Run straight into the wall.
+    await tester.pump(const Duration(seconds: 6));
+    expect(find.text('GAME OVER'), findsOneWidget);
+    expect(
+      find.textContaining(RegExp(r'^CHALLENGE [A-Z0-9]{4}-[A-Z0-9]{4}$')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('running into a wall ends the run and PLAY AGAIN restarts', (

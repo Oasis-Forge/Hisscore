@@ -15,6 +15,7 @@ class GameOverlay extends StatelessWidget {
     required this.won,
     required this.newHighScore,
     required this.isDailyRun,
+    this.challengeCode,
     required this.dailyDayNumber,
     required this.dailyState,
     required this.onShare,
@@ -27,6 +28,9 @@ class GameOverlay extends StatelessWidget {
   final bool won;
   final bool newHighScore;
   final bool isDailyRun;
+
+  /// The code of a friend-challenge run, shown so it can be passed on.
+  final String? challengeCode;
   final int dailyDayNumber;
   final DailyState dailyState;
   final VoidCallback onShare;
@@ -70,6 +74,13 @@ class GameOverlay extends StatelessWidget {
                         size: 8,
                         color: RetroColors.zenBlue,
                       ),
+                    ),
+                  ],
+                  if (challengeCode != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'CHALLENGE $challengeCode',
+                      style: RetroText.pixel(size: 8, color: RetroColors.amber),
                     ),
                   ],
                   if (newHighScore) ...[
