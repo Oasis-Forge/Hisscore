@@ -200,6 +200,7 @@ class _GamePageState extends State<GamePage>
     final scores = await widget.highScoreStore.loadTopScores();
     final loadedStats = await widget.highScoreStore.loadStats();
     final loadedDaily = await widget.highScoreStore.loadDailyState();
+    final themeId = await widget.highScoreStore.loadThemeId();
     if (!mounted) return;
     setState(() {
       highScore = value;
@@ -207,6 +208,10 @@ class _GamePageState extends State<GamePage>
       stats = loadedStats;
       dailyState = loadedDaily;
     });
+    if (themeId != null) {
+      RetroColors.current = GameTheme.byId(themeId);
+      _rebuildAll();
+    }
   }
 
   /// Zen mode never ends and scores climb forever — it doesn't compete
@@ -573,6 +578,25 @@ class _GamePageState extends State<GamePage>
     _armTicker();
   }
 
+  /// Applies [theme] everywhere and remembers it. Most widgets read the
+  /// palette in build(), but some are const and would never notice, so
+  /// the whole tree is marked dirty (state is kept).
+  void _setTheme(GameTheme theme) {
+    RetroColors.current = theme;
+    unawaited(widget.highScoreStore.saveThemeId(theme.id));
+    _rebuildAll();
+  }
+
+  void _rebuildAll() {
+    void visit(Element element) {
+      element.markNeedsBuild();
+      element.visitChildren(visit);
+    }
+
+    (context as Element).visitChildren(visit);
+    setState(() {});
+  }
+
   /// Shares the current run's result via the platform share sheet.
   Future<void> _shareScore() async {
     final text = isDailyRun
@@ -707,11 +731,11 @@ class _GamePageState extends State<GamePage>
   /// and everything you pick before a run.
   Widget _buildIntro() {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: RadialGradient(
-          center: Alignment(0, -0.2),
+          center: const Alignment(0, -0.2),
           radius: 1.2,
-          colors: [Color(0xFF10130F), RetroColors.voidBg],
+          colors: [const Color(0xFF10130F), RetroColors.voidBg],
         ),
       ),
       child: SafeArea(
@@ -750,7 +774,7 @@ class _GamePageState extends State<GamePage>
   Widget _buildGameHud() {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RetroColors.voidBg,
         border: Border(
           bottom: BorderSide(color: RetroColors.phosphorDim, width: 1.5),
@@ -811,10 +835,14 @@ class _GamePageState extends State<GamePage>
   Widget _buildCabinet() {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF201810), RetroColors.cabinet, Color(0xFF181010)],
+          colors: [
+            const Color(0xFF201810),
+            RetroColors.cabinet,
+            const Color(0xFF181010),
+          ],
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: RetroColors.cabinetRim, width: 5),
@@ -915,6 +943,8 @@ class _GamePageState extends State<GamePage>
               dailyState: dailyState,
               playedDailyToday: _playedDailyToday,
               onStartDaily: _startDailyChallenge,
+              selectedTheme: RetroColors.current,
+              onThemeChanged: _setTheme,
             ),
           ],
         );
@@ -932,7 +962,7 @@ class _GamePageState extends State<GamePage>
             return LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: const [
+              colors: [
                 RetroColors.amber,
                 RetroColors.phosphorHot,
                 RetroColors.amber,

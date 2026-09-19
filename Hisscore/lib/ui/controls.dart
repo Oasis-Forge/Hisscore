@@ -137,15 +137,16 @@ class SecondaryArcadeButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
-    this.color = RetroColors.metal,
+    this.color,
   });
 
   final String label;
   final VoidCallback onPressed;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? RetroColors.metal;
     return Semantics(
       button: true,
       label: label,
@@ -162,19 +163,16 @@ class SecondaryArcadeButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: RetroColors.screen,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: color.withValues(alpha: 0.7),
-                width: 1.2,
-              ),
+              border: Border.all(color: c.withValues(alpha: 0.7), width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.2),
+                  color: c.withValues(alpha: 0.2),
                   blurRadius: 3,
                   offset: const Offset(0, 1),
                 ),
               ],
             ),
-            child: Text(label, style: RetroText.pixel(size: 7.5, color: color)),
+            child: Text(label, style: RetroText.pixel(size: 7.5, color: c)),
           ),
         ),
       ),
@@ -326,7 +324,7 @@ class _ModeChip extends StatelessWidget {
 class FoodLegend extends StatelessWidget {
   const FoodLegend({super.key});
 
-  static const _entries = [
+  static List<(FoodType, Color)> get _entries => [
     (FoodType.apple, RetroColors.food),
     (FoodType.star, RetroColors.starGold),
     (FoodType.shield, RetroColors.shieldCyan),

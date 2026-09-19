@@ -39,7 +39,7 @@ class GameOverlay extends StatelessWidget {
     final title = isOver ? (won ? 'YOU WIN' : 'GAME OVER') : 'PAUSED';
 
     return ColoredBox(
-      color: const Color(0xE603140A),
+      color: RetroColors.screen.withValues(alpha: 0.9),
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(

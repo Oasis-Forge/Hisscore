@@ -47,8 +47,8 @@ void paintShareCard(
   canvas.drawRect(
     const Rect.fromLTWH(0, 0, w, h),
     Paint()
-      ..shader = ui.Gradient.radial(const Offset(w / 2, h * 0.4), w, const [
-        Color(0xFF10130F),
+      ..shader = ui.Gradient.radial(const Offset(w / 2, h * 0.4), w, [
+        const Color(0xFF10130F),
         RetroColors.voidBg,
       ]),
   );
