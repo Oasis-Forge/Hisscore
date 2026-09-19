@@ -1,0 +1,8 @@
+﻿# Files this app keeps its own version of, and why. `new-app.ps1 -Refresh` lists them
+# on every run with the reason, so the divergence stays visible, but stops treating
+# them as a merge still owed. Anything not listed here still holds .kit-version back.
+#
+# Both of these exist because the Flutter project is in Hisscore/, not at the repo
+# root, which is where the kit assumes it is.
+scripts/version.sh        # VERSION_FILE points at Hisscore/pubspec.yaml
+.github/dependabot.yml    # directory: /Hisscore, for the same reason
