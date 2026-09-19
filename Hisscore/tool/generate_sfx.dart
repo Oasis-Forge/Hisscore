@@ -37,7 +37,157 @@ void main() {
     ]),
   );
 
+  // Pickup stingers, one per power-up so they can be told apart by ear.
+  _write(
+    'star',
+    _tones([
+      _Tone(880, 45, _Wave.square),
+      _Tone(1175, 45, _Wave.square),
+      _Tone(1568, 90, _Wave.square),
+    ]),
+  );
+  _write(
+    'shield',
+    _tones([
+      _Tone(392, 70, _Wave.sine),
+      _Tone(587, 70, _Wave.sine),
+      _Tone(784, 150, _Wave.sine),
+    ]),
+  );
+  _write(
+    'speed',
+    _tones([
+      for (var i = 0; i < 8; i++) _Tone(400 + i * 170, 22, _Wave.square),
+    ]),
+  );
+  _write(
+    'shrink',
+    _tones([for (var i = 0; i < 6; i++) _Tone(1000 - i * 120, 36, _Wave.sine)]),
+  );
+  _write(
+    'magnet',
+    _tones([
+      for (var i = 0; i < 6; i++) _Tone(i.isEven ? 600 : 800, 32, _Wave.square),
+    ]),
+  );
+
   stdout.writeln('Wrote assets/sfx/*.wav');
+
+  _writeMusic();
+}
+
+// ─── Music ────────────────────────────────────────────
+//
+// A four-bar loop in A minor (Am F C G) at 140 BPM, rendered as three
+// layers of identical length so the game can play them together and
+// fade layers in as the combo climbs: bass always, arpeggio + hats from
+// combo 2, lead melody from combo 4.
+
+const _bpm = 140;
+final _eighth = (_sampleRate * 60 / _bpm / 2).round();
+final _sixteenth = _eighth ~/ 2;
+final _loopLength = _eighth * 8 * 4;
+
+void _writeMusic() {
+  Directory('assets/music').createSync(recursive: true);
+
+  final bass = Float32List(_loopLength);
+  final arp = Float32List(_loopLength);
+  final lead = Float32List(_loopLength);
+
+  // Bass: root, root, octave pulses on each eighth.
+  const roots = [110.0, 87.31, 130.81, 98.0];
+  const bassPattern = [1, 1, 2, 1, 1, 2, 1, 2];
+  for (var bar = 0; bar < 4; bar++) {
+    for (var e = 0; e < 8; e++) {
+      _note(
+        bass,
+        (bar * 8 + e) * _eighth,
+        roots[bar] * bassPattern[e],
+        _eighth * 0.9,
+        0.32,
+      );
+    }
+  }
+
+  // Arpeggio: sixteenth notes walking each bar's chord, plus a closed
+  // hat on every off-beat eighth.
+  const chords = [
+    [220.0, 261.63, 329.63],
+    [174.61, 220.0, 261.63],
+    [261.63, 329.63, 392.0],
+    [196.0, 246.94, 293.66],
+  ];
+  const arpPattern = [0, 1, 2, 1];
+  for (var bar = 0; bar < 4; bar++) {
+    for (var s = 0; s < 16; s++) {
+      _note(
+        arp,
+        (bar * 16 + s) * _sixteenth,
+        chords[bar][arpPattern[s % 4]],
+        _sixteenth * 0.8,
+        0.16,
+        duty: 0.25,
+      );
+    }
+    for (var e = 1; e < 8; e += 2) {
+      _hat(arp, (bar * 8 + e) * _eighth, 0.12);
+    }
+  }
+
+  // Lead: a simple hook, one bar per chord. 0 is a rest.
+  const melody = [
+    [659.25, 0.0, 523.25, 659.25, 880.0, 0.0, 783.99, 659.25],
+    [698.46, 0.0, 523.25, 698.46, 880.0, 0.0, 783.99, 698.46],
+    [659.25, 0.0, 523.25, 659.25, 783.99, 0.0, 659.25, 523.25],
+    [587.33, 0.0, 493.88, 587.33, 783.99, 0.0, 698.46, 587.33],
+  ];
+  for (var bar = 0; bar < 4; bar++) {
+    for (var e = 0; e < 8; e++) {
+      final hz = melody[bar][e];
+      if (hz == 0) continue;
+      _note(lead, (bar * 8 + e) * _eighth, hz, _eighth * 0.85, 0.22);
+    }
+  }
+
+  File('assets/music/bass.wav').writeAsBytesSync(_encodeWav(bass));
+  File('assets/music/arp.wav').writeAsBytesSync(_encodeWav(arp));
+  File('assets/music/lead.wav').writeAsBytesSync(_encodeWav(lead));
+  stdout.writeln('Wrote assets/music/*.wav');
+}
+
+/// Mixes one pulse-wave note into [buf] at sample [start].
+void _note(
+  Float32List buf,
+  int start,
+  double hz,
+  double lengthSamples,
+  double amp, {
+  double duty = 0.5,
+}) {
+  final n = lengthSamples.round();
+  for (var i = 0; i < n; i++) {
+    final at = start + i;
+    if (at >= buf.length) break;
+    final phase = (hz * i / _sampleRate) % 1.0;
+    final wave = phase < duty ? 1.0 : -1.0;
+    // Short attack to avoid a click, then a decay to silence so notes
+    // (and the loop seam) end at zero.
+    final attack = (i / 60).clamp(0.0, 1.0);
+    final decay = 1.0 - i / n;
+    buf[at] += wave * amp * attack * decay;
+  }
+}
+
+/// Mixes a short burst of noise (a hi-hat) into [buf] at sample [start].
+void _hat(Float32List buf, int start, double amp) {
+  final random = Random(start);
+  final n = (_sampleRate * 0.03).round();
+  for (var i = 0; i < n; i++) {
+    final at = start + i;
+    if (at >= buf.length) break;
+    buf[at] += (random.nextDouble() * 2 - 1) * amp * (1.0 - i / n);
+  }
 }
 
 void _write(String name, Float32List samples) {

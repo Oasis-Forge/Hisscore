@@ -91,6 +91,14 @@ flutter:
     - assets/sfx/bonus.wav
     - assets/sfx/levelup.wav
     - assets/sfx/gameover.wav
+    - assets/sfx/star.wav
+    - assets/sfx/shield.wav
+    - assets/sfx/speed.wav
+    - assets/sfx/shrink.wav
+    - assets/sfx/magnet.wav
+    - assets/music/bass.wav
+    - assets/music/arp.wav
+    - assets/music/lead.wav
 
   fonts:
     - family: PressStart2P

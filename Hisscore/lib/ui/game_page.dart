@@ -374,11 +374,7 @@ class _GamePageState extends State<GamePage>
         if (engine.justAte && engine.lastEatenFood != null) {
           final pos = engine.lastEatenFood!.position;
           _emitEatParticles(pos);
-          unawaited(
-            engine.lastEatenFood!.type == FoodType.apple
-                ? soundManager.playEat()
-                : soundManager.playBonus(),
-          );
+          unawaited(soundManager.playPickup(engine.lastEatenFood!.type));
           final gained = engine.score - scoreBefore;
           if (gained > 0) {
             _spawnLabel('+$gained', pos, RetroColors.phosphorHot);
@@ -676,6 +672,13 @@ class _GamePageState extends State<GamePage>
 
   @override
   Widget build(BuildContext context) {
+    // Every transition that matters (play, pause, game over, menu, a
+    // combo change) goes through setState, so the music follows along
+    // from here. syncMusic only acts when something actually changed.
+    soundManager.syncMusic(
+      playing: !showIntro && engine.phase == GamePhase.running,
+      combo: engine.comboCount,
+    );
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
@@ -906,6 +909,21 @@ class _GamePageState extends State<GamePage>
                   },
                   child: Icon(
                     soundManager.enabled ? Icons.volume_up : Icons.volume_off,
+                    size: 12,
+                    color: RetroColors.phosphorDim,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    final next = !soundManager.musicEnabled;
+                    unawaited(soundManager.setMusicEnabled(next));
+                    setState(() {});
+                  },
+                  child: Icon(
+                    soundManager.musicEnabled
+                        ? Icons.music_note
+                        : Icons.music_off,
                     size: 12,
                     color: RetroColors.phosphorDim,
                   ),
