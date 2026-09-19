@@ -14,9 +14,12 @@ themes and skins, music, and a global leaderboard on Firebase.
   phase 5 not started. See ROADMAP.md.
 - **Code:** `main` is green. 207 tests in 20 test files. CI runs format check, analyze, tests, an Android
   release build and a web build on every PR.
-- **PR #31** ("Connect the leaderboard to Firebase") is open and green. Until it merges, `main` has the
-  leaderboard *layer* but no real backend. It also fixes the release workflow (section 8).
-- **Never released.** No tag, no GitHub release, nothing on Play. Version is `1.0.0+1`.
+- **The leaderboard is live on `main`.** PR #31 merged (as #32), so the Firebase backend is wired up, not
+  just the layer. It also fixed the release workflow (section 8). Two starter-kit tooling PRs (#33, #34)
+  landed on top.
+- **Tagged but not released.** `v1.0.0` is tagged and the Release workflow ran green, leaving a **draft**
+  GitHub release with `hisscore-1.0.0.apk` attached. Nothing is published, and nothing is on Play.
+  Version is `1.0.0+1`.
 - **Not verified by a person on a real phone:** sound, haptics, share sheet, notifications, rating
   prompt. Everything was checked on the Android emulator, by tests, and by screenshots.
 
@@ -132,8 +135,10 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 - **Package id:** `com.oasisforge.<appname>` for every app. Hisscore was renamed from
   `com.hisscore.hisscore` before it was ever published. Once an id is on Play it can never change.
 - **One PR per feature, branched from `main`.** Add files by path (`git add Hisscore/lib ...`), never
-  `git add -A`: running Flutter rewrites `Hisscore/pubspec.lock` and `Hisscore/linux/flutter/generated_*`
-  locally (different SDK than Dependabot used), and those are noise. Use `git rebase --autostash`.
+  `git add -A`: running Flutter rewrites `Hisscore/linux/flutter/generated_*` locally and that is noise
+  (line endings only). `Hisscore/pubspec.lock` is *not* noise: if you touched `pubspec.yaml`, run
+  `flutter pub get` on the SDK `FLUTTER_VERSION` pins and commit the regenerated lock in the same PR.
+  Skipping it once already left the entire Firebase tree out of the lockfile. Use `git rebase --autostash`.
 - **Stacked PRs:** if PR B is based on PR A, change B's base to `main` *before* merging A, or GitHub merges
   B into A's branch and it never reaches `main`. This happened once (skins, PR #22 to #23).
 - **Verify on the emulator, and say what was and was not verified in the PR.** PR descriptions here list
@@ -182,7 +187,8 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 
 ## 9. What to do next (suggested order)
 
-1. **Merge #31**, watch the release run, fix whatever the untested release steps trip on.
+1. ~~Merge #31, watch the release run.~~ **Done.** It merged as #32, the release run went green first try,
+   and it produced the draft `v1.0.0` release. Publishing that draft is still a decision, not a chore.
 2. **Play it on a real phone** and work through `RELEASE.md` section 1. Music was never heard by a person
    (loop, mix levels, and whether the three layers stay in step); quest and level balance are guesses.
 3. **Privacy, Data safety, store listing** updated for the leaderboard.
@@ -200,8 +206,6 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 - Web/PWA install and offline were never tried (and web is out of scope now).
 - Daily quests roll over at UTC midnight (unit-tested only, never seen live).
 - iOS has never been built (`RELEASE.md` section 5).
-- `pubspec.lock` in the repo differs from what the pinned SDK resolves for four transitive packages
-  (Dependabot used a newer Flutter). Harmless; CI resolves its own.
 
 ## 11. Working with Claude Code (optional)
 
