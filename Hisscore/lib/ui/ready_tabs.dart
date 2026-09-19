@@ -88,6 +88,8 @@ class ReadyModesTab extends StatelessWidget {
     required this.dailyState,
     required this.playedDailyToday,
     required this.onStartDaily,
+    required this.onNewChallenge,
+    required this.onEnterCode,
   });
 
   final GameMode selectedMode;
@@ -96,6 +98,12 @@ class ReadyModesTab extends StatelessWidget {
   final DailyState dailyState;
   final bool playedDailyToday;
   final VoidCallback onStartDaily;
+
+  /// Start a fresh seeded game in the selected mode, to share as a code.
+  final VoidCallback onNewChallenge;
+
+  /// Type in a friend's code and play their game.
+  final VoidCallback onEnterCode;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +117,23 @@ class ReadyModesTab extends StatelessWidget {
           dailyState: dailyState,
           playedToday: playedDailyToday,
           onStart: onStartDaily,
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SecondaryArcadeButton(
+              label: 'CHALLENGE',
+              color: RetroColors.amber,
+              onPressed: onNewChallenge,
+            ),
+            const SizedBox(width: 10),
+            SecondaryArcadeButton(
+              label: 'ENTER CODE',
+              color: RetroColors.zenBlue,
+              onPressed: onEnterCode,
+            ),
+          ],
         ),
       ],
     );

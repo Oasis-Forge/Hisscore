@@ -96,4 +96,57 @@ void main() {
       expect(streak, 1);
     });
   });
+
+  group('fixed grid', () {
+    test('is portrait and the aspect matches the size', () {
+      expect(DailyChallenge.gridRows, greaterThan(DailyChallenge.gridColumns));
+      expect(
+        DailyChallenge.gridAspect,
+        DailyChallenge.gridColumns / DailyChallenge.gridRows,
+      );
+    });
+  });
+
+  group('scoreBar', () {
+    test('is empty at zero and full at the cap', () {
+      expect(DailyChallenge.scoreBar(0), '⬛' * 10);
+      expect(DailyChallenge.scoreBar(500), '🟩' * 5 + '🟨' * 3 + '🟥' * 2);
+      expect(DailyChallenge.scoreBar(99999), DailyChallenge.scoreBar(500));
+    });
+
+    test('fills one square per 50 points, shaded as it goes', () {
+      expect(DailyChallenge.scoreBar(49), '⬛' * 10);
+      expect(DailyChallenge.scoreBar(50), '🟩${'⬛' * 9}');
+      expect(DailyChallenge.scoreBar(300), '${'🟩' * 5}🟨${'⬛' * 4}');
+    });
+  });
+
+  group('resultText', () {
+    test('lays out the day, bar, stats and streak', () {
+      final text = DailyChallenge.resultText(
+        dayNumber: 262,
+        score: 120,
+        apples: 12,
+        bestCombo: 4,
+        streak: 3,
+      );
+      expect(text.split('\n'), [
+        'HISCORE Daily #262 🐍',
+        '🟩🟩⬛⬛⬛⬛⬛⬛⬛⬛',
+        '120 pts · 12 🍎 · combo x4',
+        'Streak 3 🔥',
+      ]);
+    });
+
+    test('leaves out the combo when there was none', () {
+      final text = DailyChallenge.resultText(
+        dayNumber: 1,
+        score: 10,
+        apples: 1,
+        bestCombo: 1,
+        streak: 1,
+      );
+      expect(text.contains('combo'), isFalse);
+    });
+  });
 }
