@@ -12,19 +12,31 @@ Last reviewed: 2026-09-12.
 
 ### 1. Play the APK on a real phone
 
-**Nobody has verified four shipped features on real hardware.** The web
-preview can't exercise any of them:
+**Three of these were checked on the Android emulator on 2026-09-20; three still
+need real hardware.** The web preview can't exercise any of them, and an emulator
+cannot settle the audio ones: this one has no working audio output and no
+vibration motor.
 
-- [ ] **Sound** — eat blip, bonus, level-up, game-over, and the mute toggle
-- [ ] **Share** — SHARE SCORE on the game-over screen should open the
-      Android share sheet
-- [ ] **Notifications** — finish a Daily Challenge; it should ask for
-      permission, then schedule a streak reminder ~20h out
+- [ ] **Sound** — eat blip, bonus, level-up, game-over, and the mute toggle.
+      *Still open: nobody has heard it. Not checkable on this emulator, where
+      nothing — not even a system volume beep — ever reaches `state:started`
+      in `dumpsys audio`.*
+- [x] **Share** — SHARE SCORE on the game-over screen should open the
+      Android share sheet. *Emulator: the sheet opened with the board PNG and
+      the caption "HISSCORE — CLASSIC — Score 10 / Can you beat it?".*
+- [x] **Notifications** — finish a Daily Challenge; it should ask for
+      permission, then schedule a streak reminder ~20h out. *Emulator: the
+      prompt fired, and `dumpsys alarm` showed the reminder at +19h50m on
+      ScheduledNotificationReceiver.*
 - [ ] **Rating prompt** — should fire once on a new high score, after a
-      couple of games
-- [ ] **Lifecycle** — background the app mid-run and come back; the run
-      must be paused, not dead
-- [ ] **Haptics** — button presses should buzz
+      couple of games. *Still open: in_app_review needs the Play Store, so it
+      cannot be triggered reliably on the emulator.*
+- [x] **Lifecycle** — background the app mid-run and come back; the run
+      must be paused, not dead. *Emulator: a Zen run held its score across 10s
+      backgrounded and came back PAUSED, and the score did not advance while
+      away, so the engine really stops.*
+- [ ] **Haptics** — button presses should buzz. *Still open: the emulator has
+      no vibration motor, so this cannot be felt or confirmed there.*
 
 Build one with:
 
@@ -59,15 +71,21 @@ requests is `POST_NOTIFICATIONS`, for the on-device streak reminder.
 when it exists and falls back to debug keys when it doesn't — so builds
 work today but **cannot be published**.
 
-- [ ] Create the keystore:
+- [x] Create the keystore. Done 2026-09-20: `~/hisscore-upload.jks`, RSA 2048,
+      alias `upload`, valid 10,000 days. Note that `keytool` is not on PATH on
+      the Windows box; it ships inside Android Studio's JDK:
       ```bash
-      keytool -genkey -v -keystore ~/upload-keystore.jks \
-        -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+      "/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe" -genkeypair -v \
+        -keystore ~/hisscore-upload.jks -alias upload \
+        -keyalg RSA -keysize 2048 -validity 10000
       ```
-- [ ] Write `android/key.properties` (gitignored — never commit it)
+- [x] Write `android/key.properties` (gitignored — never commit it). Done, and
+      confirmed ignored by `git check-ignore` and absent from `git status`.
 - [ ] **Back the keystore up somewhere you won't lose it.** Lose this
       file and you can never update the app under the same listing.
-- [ ] Build with `flutter build appbundle` for Play
+- [x] Build with `flutter build appbundle` for Play. Done: `app-release.aab`
+      (53.6 MB). `jarsigner -verify` reports "jar verified" and the signer is
+      `CN=Hassan Kalash, O=Oasis Forge, C=LB`, not the debug key.
 
 ### 4. Screenshots
 

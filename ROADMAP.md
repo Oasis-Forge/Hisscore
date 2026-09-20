@@ -69,8 +69,14 @@ where it landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
       handling, and store/privacy updates. Suggested placement: after game over, and a rewarded revive.
 - [ ] **Privacy and store forms.** First data leaves the device with the leaderboard. Update the privacy
       policy (`docs/index.html`), Play Data safety, and `store/listing.md`. Ads add to this.
-- [ ] Device verification of sound, haptics, share sheet, notifications, rating prompt (`RELEASE.md`)
-- [ ] First release: nothing has ever been tagged or shipped (see HANDOFF, release section)
+- [ ] Device verification (`RELEASE.md` section 1). Share, notifications and lifecycle were
+      confirmed on the emulator 2026-09-20. Sound, haptics and the rating prompt still need
+      real hardware: the emulator has no working audio output, no vibration motor, and no
+      Play Store.
+- [ ] First release. `v1.0.0` is tagged and a **draft** GitHub release holds a debug-signed
+      APK; nothing is published and nothing is on Play. A Play-ready `app-release.aab`, signed
+      with the real upload key, now builds locally (`RELEASE.md` section 3). Still needed:
+      keystore backup, privacy policy URL, screenshots, store forms.
 
 ## Decisions log
 
