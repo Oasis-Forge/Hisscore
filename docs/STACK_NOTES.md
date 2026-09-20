@@ -31,7 +31,7 @@ flutter create --org <APP_ID without its last part> --project-name <snake_case_n
 Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 - `pubspec.yaml`: `version: 0.1.0+1`. The version lives only there; Android and iOS read it from pubspec.
 - Set the Android `applicationId`/`namespace` and the iOS/macOS bundle IDs to `APP_ID` exactly. `flutter create` appends the project name to the org.
-- `.gitignore`: add `/dist/`, `/coverage/`, `/store/`, `android/key.properties`, and `*.jks`.
+- `.gitignore`: add `/Hisscore/dist/`, `/coverage/`, `/store/`, `android/key.properties`, and `*.jks`.
 - `analysis_options.yaml`: add `unawaited_futures`, `prefer_single_quotes`, `prefer_const_constructors`, and `always_declare_return_types`.
 - **Release signing has to be wired in by hand.** `flutter create` generates no signing config, so a release build is debug-signed even with `android/key.properties` present and every CI secret set — and Play rejects the upload for not matching the upload certificate. Add this to `android/app/build.gradle.kts` above `android {`, and the `signingConfig` line inside `buildTypes`:
 
@@ -108,7 +108,7 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
 
 ```bash
 "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd Medium_Phone -no-boot-anim
-adb install -r dist/<slug>-X.Y.Z.apk
+adb install -r Hisscore/dist/<slug>-X.Y.Z.apk
 adb shell am start -S -n <APP_ID>/.MainActivity
 ```
 

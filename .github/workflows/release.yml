@@ -108,9 +108,9 @@ jobs:
 
       - name: Name the files after the version
         run: |
-          mkdir -p dist
-          cp Hisscore/build/app/outputs/flutter-apk/app-release.apk "dist/$SLUG-$NAME.apk"
-          cp Hisscore/build/app/outputs/bundle/release/app-release.aab "dist/$SLUG-$NAME.aab"
+          mkdir -p Hisscore/dist
+          cp Hisscore/build/app/outputs/flutter-apk/app-release.apk "Hisscore/dist/$SLUG-$NAME.apk"
+          cp Hisscore/build/app/outputs/bundle/release/app-release.aab "Hisscore/dist/$SLUG-$NAME.aab"
 
       # Debug-signed test builds, not release artifacts. The AAB that goes to Play
       # is built locally with the real upload key; see RELEASE.md section 3.
@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: unsigned-test-build-${{ env.TAG }}
-          path: dist/
+          path: Hisscore/dist/
           retention-days: 14
 
       # The tag is the one thing this workflow still publishes: CI's version

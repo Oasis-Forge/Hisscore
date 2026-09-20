@@ -113,14 +113,17 @@ builds. Build the real artifacts locally and upload the AAB to Play by hand:
 
 ```bash
 cd Hisscore
-flutter build appbundle --release   # dist/hisscore-X.Y.Z.aab -- this goes to Play
-flutter build apk --release        # dist/hisscore-X.Y.Z.apk -- sideload to test
+flutter build appbundle --release
+flutter build apk --release
+mkdir -p dist
+cp build/app/outputs/bundle/release/app-release.aab dist/hisscore-X.Y.Z.aab   # goes to Play
+cp build/app/outputs/flutter-apk/app-release.apk dist/hisscore-X.Y.Z.apk    # sideload to test
 ```
 
 Check the signer before uploading; it must not say `CN=Android Debug`:
 
 ```bash
-apksigner verify --print-certs Hisscore/build/app/outputs/flutter-apk/app-release.apk
+apksigner verify --print-certs Hisscore/dist/hisscore-X.Y.Z.apk
 ```
 
 ### 4. Screenshots
