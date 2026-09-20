@@ -105,6 +105,24 @@ work today but **cannot be published**.
       (53.6 MB). `jarsigner -verify` reports "jar verified" and the signer is
       `CN=Hassan Kalash, O=Oasis Forge, C=LB`, not the debug key.
 
+**Signing stays off CI, by decision (2026-09-20).** `release.yml` supports
+keystore secrets but they are deliberately not set, so anything it builds is
+debug-signed and Play would reject it; the workflow no longer creates a GitHub
+Release or uploads to Play, and its run artifacts are labelled unsigned test
+builds. Build the real artifacts locally and upload the AAB to Play by hand:
+
+```bash
+cd Hisscore
+flutter build appbundle --release   # dist/hisscore-X.Y.Z.aab -- this goes to Play
+flutter build apk --release        # dist/hisscore-X.Y.Z.apk -- sideload to test
+```
+
+Check the signer before uploading; it must not say `CN=Android Debug`:
+
+```bash
+apksigner verify --print-certs Hisscore/build/app/outputs/flutter-apk/app-release.apk
+```
+
 ### 4. Screenshots
 
 Must come from a real device — Play down-ranks listings whose

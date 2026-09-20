@@ -1,11 +1,17 @@
 name: Release
 
 # Every merge to main whose pubspec.yaml version (x.y.z+N) has no vX.Y.Z tag yet
-# builds the APK and AAB, tags the merge commit, and attaches the APK to a draft
-# GitHub Release with the CHANGELOG.md entry as notes. With signing and Play
-# secrets, the AAB also goes to Play internal testing as a draft. CI makes every
-# PR bump the version, so every merged PR gets its own APK. Manual runs outside
-# main only build artifacts.
+# builds the app, checks the APK's permissions, and tags the merge commit. CI's
+# version check compares every PR against that tag, which is why the tag still
+# matters even though nothing is published from here.
+#
+# This workflow does NOT publish. It creates no GitHub Release and uploads nothing
+# to Play, by decision: the upload keystore is deliberately kept off CI, so any
+# artifact built here is signed with a throwaway debug key and Play would reject
+# it. The real, upload-signed AAB is built locally -- see RELEASE.md section 3.
+#
+# The artifacts attached to a run are unsigned test builds, useful for sideloading
+# a specific commit and nothing else.
 
 on:
   push:
@@ -52,7 +58,7 @@ jobs:
           { echo "name=$name"; echo "tag=$tag"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and publish
+    name: Build and tag
     needs: version
     if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -61,7 +67,6 @@ jobs:
       NAME: ${{ needs.version.outputs.name }}
       TAG: ${{ needs.version.outputs.tag }}
       RELEASE: ${{ needs.version.outputs.release }}
-      HAS_PLAY_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -75,28 +80,6 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-
-      - name: Configure release signing
-        id: signing
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set: signing with a throwaway debug key and skipping Play."
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > Hisscore/android/app/upload-keystore.jks
-          {
-            echo "storePassword=$KEYSTORE_PASSWORD"
-            echo "keyPassword=$KEY_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "storeFile=upload-keystore.jks"
-          } > Hisscore/android/key.properties
-          echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         working-directory: Hisscore
@@ -129,25 +112,17 @@ jobs:
           cp Hisscore/build/app/outputs/flutter-apk/app-release.apk "dist/$SLUG-$NAME.apk"
           cp Hisscore/build/app/outputs/bundle/release/app-release.aab "dist/$SLUG-$NAME.aab"
 
-      - name: Upload build artifacts
+      # Debug-signed test builds, not release artifacts. The AAB that goes to Play
+      # is built locally with the real upload key; see RELEASE.md section 3.
+      - name: Upload unsigned test builds
         uses: actions/upload-artifact@v7
         with:
-          name: android-${{ env.TAG }}
+          name: unsigned-test-build-${{ env.TAG }}
           path: dist/
           retention-days: 14
 
-      - name: Write release notes
-        if: env.RELEASE == 'true'
-        env:
-          SIGNED: ${{ steps.signing.outputs.signed }}
-        run: |
-          bash scripts/version.sh notes > release-notes.md
-          if [ "$SIGNED" != true ]; then
-            printf '\n> This APK is signed with a throwaway debug key, so it cannot update an installed copy. Back up in the app, uninstall, install this APK, then restore.\n' >> release-notes.md
-          fi
-
-      # The tag records the release; CI's version check compares PRs against it.
-      # A draft release doesn't create its tag, so push it first.
+      # The tag is the one thing this workflow still publishes: CI's version
+      # check compares every PR against it, so it has to exist.
       - name: Tag the release
         if: env.RELEASE == 'true'
         run: |
@@ -156,23 +131,3 @@ jobs:
             git push origin "refs/tags/$TAG"
           fi
 
-      # Draft: on a public repo the APK stays private until you publish the release.
-      - name: Attach APK to a draft GitHub Release
-        if: env.RELEASE == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ env.TAG }}
-          name: 'Hisscore ${{ env.NAME }}'
-          body_path: release-notes.md
-          files: dist/${{ env.SLUG }}-${{ env.NAME }}.apk
-          draft: true
-
-      - name: Upload to Play internal testing
-        if: env.RELEASE == 'true' && steps.signing.outputs.signed == 'true' && env.HAS_PLAY_CREDENTIALS == 'true'
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ env.PACKAGE_NAME }}
-          releaseFiles: dist/${{ env.SLUG }}-${{ env.NAME }}.aab
-          track: internal
-          status: draft

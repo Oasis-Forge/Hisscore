@@ -6,7 +6,7 @@ argument-hint: "[major|minor|patch]"
 
 Version bump for this branch: $ARGUMENTS (default: choose from the changes).
 
-Every PR merged to `main` is a release: `release.yml` tags `vX.Y.Z` and drafts a GitHub Release with the changelog entry and the artifacts. CI (`bash scripts/version.sh check`) fails a PR whose version isn't above the latest tag or has no changelog entry.
+Every PR merged to `main` is a release: `release.yml` tags `vX.Y.Z`. It publishes nothing else -- no GitHub Release, no Play upload -- because the upload keystore is deliberately kept off CI, so anything built there is debug-signed and Play would reject it. The release artifacts are built locally (step 5) and uploaded to Play by hand. CI (`bash scripts/version.sh check`) fails a PR whose version isn't above the latest tag or has no changelog entry.
 
 1. Stop if on `main`. Run `git fetch --tags --quiet`; the latest release is the first line of `git tag --list "v*" --sort=-v:refname`. Read the current version with `bash scripts/version.sh name` (it reads `Hisscore/pubspec.yaml`) and `build`. With no tag yet, keep the version and only write its entry. If the branch is already above the tag, adjust the level if needed and update its entry.
 2. Bump the tag's version per SemVer and reset the lower parts (`1.4.2` → `1.5.0`):
