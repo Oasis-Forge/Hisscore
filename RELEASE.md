@@ -105,11 +105,13 @@ work today but **cannot be published**.
       (53.6 MB). `jarsigner -verify` reports "jar verified" and the signer is
       `CN=Hassan Kalash, O=Oasis Forge, C=LB`, not the debug key.
 
-**Signing stays off CI, by decision (2026-09-20).** `release.yml` supports
-keystore secrets but they are deliberately not set, so anything it builds is
-debug-signed and Play would reject it; the workflow no longer creates a GitHub
-Release or uploads to Play, and its run artifacts are labelled unsigned test
-builds. Build the real artifacts locally and upload the AAB to Play by hand:
+**Nothing is released from GitHub, by decision (2026-09-20).** The release
+workflow is gone, along with its tags and draft GitHub Releases. The upload
+keystore is deliberately kept off CI, so anything CI builds is debug-signed and
+Play would reject it -- attaching such a build to a "release" only invites someone
+to upload it. `ci.yaml` still builds a debug-signed APK on every PR to catch
+Gradle breakage, and still runs the RUN-2 permission check, but it publishes
+nothing. Build the real artifacts locally and upload the AAB to Play by hand:
 
 ```bash
 cd Hisscore

@@ -75,10 +75,10 @@ where it landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
       confirmed on the emulator 2026-09-20. Sound, haptics and the rating prompt still need
       real hardware: the emulator has no working audio output, no vibration motor, and no
       Play Store.
-- [ ] First release. `v1.0.0` is tagged and a **draft** GitHub release holds a debug-signed
-      APK; nothing is published and nothing is on Play. A Play-ready `app-release.aab`, signed
-      with the real upload key, now builds locally (`RELEASE.md` section 3). Still needed:
-      keystore backup, privacy policy URL, screenshots, store forms.
+- [ ] First release. Nothing is on Play. Releasing from GitHub was dropped on 2026-09-20:
+      no release workflow, no tags, no GitHub Releases. A Play-ready `app-release.aab`,
+      signed with the real upload key, builds locally and is uploaded by hand
+      (`RELEASE.md` section 3). Still needed: keystore backup, screenshots, store forms.
 
 ## Decisions log
 

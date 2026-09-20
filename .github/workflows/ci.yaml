@@ -68,6 +68,25 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
+      # RUN-2: the store listing's data-safety answers depend on these, and a
+      # plugin can add one without anyone noticing. List what the app may
+      # declare; anything else fails the build. Lived in release.yml until that
+      # workflow was removed. The split APKs share one manifest, so checking
+      # arm64 checks them all.
+      - name: Check the APK's permissions
+        env:
+          ALLOWED: 'android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE android.permission.POST_NOTIFICATIONS android.permission.VIBRATE com.google.android.providers.gsf.permission.READ_GSERVICES'
+          PACKAGE_NAME: 'com.oasisforge.hisscore'
+        run: |
+          aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
+          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | tee permissions.txt
+          unexpected=$(sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" permissions.txt \
+            | grep -v "^${PACKAGE_NAME}\." | grep -vxF -f <(printf '%s\n' $ALLOWED) || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::The release APK declares permissions outside the allowed list (RUN-2): $unexpected"
+            exit 1
+          fi
+
       - name: Upload APKs
         uses: actions/upload-artifact@v7
         with:
