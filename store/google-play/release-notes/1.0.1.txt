@@ -1,0 +1,5 @@
+<en-US>
+• Fixed: the game no longer silences your own music. Starting a run used to take
+over your phone's audio and stop whatever you had playing, without handing it
+back. Hisscore now mixes with it instead.
+</en-US>

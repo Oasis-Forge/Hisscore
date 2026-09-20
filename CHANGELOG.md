@@ -4,6 +4,13 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-20
+
+### Fixed
+- Sound effects no longer silence your own music. Starting a game used to take over
+  the phone's audio and stop whatever you had playing, and never hand it back; the
+  game's sounds now mix with it instead.
+
 ## [1.0.0] - 2026-09-19
 
 The first release.
