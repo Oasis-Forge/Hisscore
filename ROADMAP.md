@@ -67,8 +67,10 @@ where it landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
 - [ ] Opt-in analytics (D1/D7 retention, share rate, daily completion); needs a privacy policy update
 - [ ] **Monetization: ads (decided).** Not started. Needs an AdMob account, `google_mobile_ads`, consent
       handling, and store/privacy updates. Suggested placement: after game over, and a rewarded revive.
-- [ ] **Privacy and store forms.** First data leaves the device with the leaderboard. Update the privacy
-      policy (`docs/index.html`), Play Data safety, and `store/listing.md`. Ads add to this.
+- [ ] **Privacy and store forms.** The privacy policy (`docs/index.html`) now describes the
+      leaderboard and is live at <https://oasis-forge.github.io/Hisscore/>. Still open: the Play
+      Data safety form, `store/listing.md`, and an in-app opt-out for score submission, which
+      today happens silently at the end of every run. Ads add to this.
 - [ ] Device verification (`RELEASE.md` section 1). Share, notifications and lifecycle were
       confirmed on the emulator 2026-09-20. Sound, haptics and the rating prompt still need
       real hardware: the emulator has no working audio output, no vibration motor, and no

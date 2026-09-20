@@ -50,20 +50,38 @@ Or grab the artifact from any green CI run.
 
 ### 2. Privacy policy at a public URL
 
-Both stores require a reachable policy even though the app collects
-nothing. The page is written — [`docs/index.html`](docs/index.html) —
-but is **not hosted yet and has a placeholder contact address**.
+Both stores require a reachable policy. The page is written
+([`docs/index.html`](docs/index.html)), hosted, and now describes the
+leaderboard.
 
-- [ ] Put a real support email in it (currently `support@hisscore.app`,
-      clearly marked as a placeholder)
-- [ ] Turn on GitHub Pages for this repo: Settings → Pages → Source →
-      Deploy from branch → `main` / `/docs`
+- [x] Put a real support email in it. Done 2026-09-20: `oasisforge.support@gmail.com`.
+- [x] Turn on GitHub Pages. Done: live at
+      <https://oasis-forge.github.io/Hisscore/>, serving `main` / `/docs`.
 - [ ] Paste the resulting URL into Play Console and App Store Connect
 
-The substance is short and already true: no accounts, no analytics, no
-ads, no network calls; scores and stats live in local app storage;
-uninstalling removes everything. The only permission the release build
-requests is `POST_NOTIFICATIONS`, for the on-device streak reminder.
+**The old wording was wrong and was briefly published.** It said the app
+collects "Nothing" and that "There is no backend for it to send data to",
+which stopped being true when the Firebase leaderboard shipped. The page now
+states what actually leaves the device: at the end of every run scoring above
+zero, the app submits a display name, the score, a server timestamp and an
+anonymous Firebase Auth ID to Cloud Firestore, with no prompt and no opt-out.
+
+Two things still follow from that:
+
+- [ ] **Play Data safety form** must match this: collected and transmitted are
+      a user-chosen name ("Personal info > Name", public), in-app score
+      ("App activity"), and a pseudonymous device/user ID. Not encrypted at
+      rest by us beyond Firestore's own defaults; no deletion request flow in
+      the app, only by email.
+- [ ] **Consider an opt-out before wider release.** Silent submission of a
+      pseudonymous ID plus a display name is personal data under GDPR. The
+      policy currently tells players to go offline to avoid it, which is a
+      workaround, not a control.
+
+Accurate as of this version: no ads, no analytics, no tracking SDKs, and crash
+reports stay on-device because no `SENTRY_DSN` is set in any shipped build. The
+only runtime permission is `POST_NOTIFICATIONS`, for the on-device streak
+reminder.
 
 ### 3. Upload keystore
 
