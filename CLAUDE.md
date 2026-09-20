@@ -74,7 +74,12 @@ Three jobs on every push/PR: `analyze-and-test` (format check + analyze +
 test), `build-android` (release APK, debug-signed — exists to catch
 Gradle/resource-linking breakage that has slipped through when only web
 was built), `build-web`. Flutter version is pinned via `FLUTTER_VERSION`
-in the workflow env.
+in the workflow env. `build-android` also runs the RUN-2 permission
+check: the release APK may only declare the permissions in its `ALLOWED`
+list, so a plugin cannot quietly add one behind the store listing.
+
+`ci.yaml` is the only workflow. There is no release workflow: nothing is
+tagged or released from GitHub (see Release process).
 
 ## Architecture
 
@@ -165,6 +170,14 @@ Outstanding pre-launch work (device verification, store listings,
 signing) is tracked in [RELEASE.md](RELEASE.md) — check there before
 assuming a feature (sound, share, notifications, rating prompt, haptics)
 has been verified on real hardware; the web preview can't exercise any
-of them. Release (upload) signing uses a gitignored
-`android/key.properties` pointing at a local keystore; debug-signed
-builds work for sideloading but are rejected by the Play Store.
+of them.
+
+**Releases are built locally and uploaded by hand; nothing is released
+from GitHub.** There is no release workflow, no tags and no GitHub
+Releases, by decision (2026-09-20) -- the upload keystore is kept off CI,
+so anything CI builds is debug-signed and Play rejects it. Upload signing
+uses a gitignored `android/key.properties` pointing at a local keystore.
+Build with `flutter build appbundle --release`, copy into `Hisscore/dist/`,
+and check the signer is not `CN=Android Debug` before uploading
+(`apksigner verify --print-certs`, not `jarsigner`, which cannot read the
+v2-only signature Flutter produces). See RELEASE.md section 3.

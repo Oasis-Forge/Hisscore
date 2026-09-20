@@ -17,9 +17,9 @@ themes and skins, music, and a global leaderboard on Firebase.
 - **The leaderboard is live on `main`.** PR #31 merged (as #32), so the Firebase backend is wired up, not
   just the layer. It also fixed the release workflow (section 8). Two starter-kit tooling PRs (#33, #34)
   landed on top.
-- **Tagged but not released.** `v1.0.0` is tagged and the Release workflow ran green, leaving a **draft**
-  GitHub release with `hisscore-1.0.0.apk` attached. Nothing is published, and nothing is on Play.
-  Version is `1.0.0+1`.
+- **Nothing is released, and nothing releases from GitHub.** Version is `1.0.1+2`. There are no tags
+  and no GitHub Releases: that machinery was removed on 2026-09-20 because everything CI can build is
+  debug-signed and Play rejects it. Releases are built locally and uploaded by hand (section 8).
 - **Not verified by a person on a real phone:** sound, haptics, share sheet, notifications, rating
   prompt. Everything was checked on the Android emulator, by tests, and by screenshots.
 
@@ -80,7 +80,7 @@ Hisscore/                       the Flutter app
 firebase/firestore.rules        the Firestore security rules (deploy by pasting in the console)
 docs/                           LEADERBOARD.md (Firebase), this file, the privacy policy page (index.html)
 store/                          store listing text and graphics
-.github/workflows/              ci.yaml (every PR) and release.yml (every merge to main)
+.github/workflows/              ci.yaml -- the only workflow; nothing is released from GitHub
 .claude/                        Claude Code settings, skills and a format hook (optional tooling)
 RELEASE.md                      pre-launch checklist: read it before shipping
 ```
@@ -162,33 +162,41 @@ RELEASE.md                      pre-launch checklist: read it before shipping
   send `key back` from the menu: it leaves the app.
 - The emulator may still have the **old `com.hisscore.hisscore`** install (with old preview data). It is
   harmless; uninstall it if it confuses you.
-- **Adding an Android permission** (including via a new plugin) makes the release workflow fail its
-  permission allow-list until you update `ALLOWED` in `.github/workflows/release.yml` *and* the privacy
-  policy / Data safety answers. That is the point of the check (it is called RUN-2 in the file).
+- **Adding an Android permission** (including via a new plugin) fails CI's permission allow-list until
+  you update `ALLOWED` in `.github/workflows/ci.yaml` (`build-android`) *and* the privacy policy /
+  Data safety answers. That is the point of the check (it is called RUN-2 in the file).
 - Plugin warnings about "Built-in Kotlin" during Android builds are from third-party plugins; harmless now,
   but they will need plugin upgrades eventually.
 
-## 8. Release: nothing has shipped
+## 8. Release: nothing has shipped, and nothing releases from GitHub
 
-- **`release.yml` runs on every merge to `main` and failed every time until PR #31.** It rejected the APK
-  because it declares `VIBRATE` (and, with Firebase, `ACCESS_NETWORK_STATE` and `READ_GSERVICES`), which the
-  allow-list did not include. PR #31 fixes the list. It has never completed a full run, so expect the later
-  steps (tagging, drafting the GitHub release) to be untested. **The first merge after #31 will try to tag
-  `v1.0.0` and draft a release**: watch that run (`gh run list --workflow release.yml`).
-- Release notes come from the `## [1.0.0]` entry in `CHANGELOG.md`. Versions are read from
-  `Hisscore/pubspec.yaml` by `scripts/version.sh`.
-- Signed builds and Play upload need secrets that are **not set**: `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON`.
-  Without them it builds a debug-signed APK that Play rejects. No upload keystore exists yet.
-- `RELEASE.md` is the pre-launch checklist: real-phone verification, privacy policy at a public URL and a
-  real support email, keystore, screenshots, iOS (never built), store listing, Data safety form.
-- **Before any release:** the privacy policy, Play Data safety and store listing still say nothing leaves
-  the device. That has been false since the leaderboard. Ads will add more. Fix these first.
+- **Releasing from GitHub was dropped on 2026-09-20.** There is no `release.yml`, no tags and no
+  GitHub Releases. Two draft releases had already been produced, both holding **debug-signed** APKs
+  that Play would reject, which is exactly the trap: an artifact attached to something called a
+  "release" invites someone to upload it. The keystore is deliberately kept off CI, so CI can only
+  ever produce debug-signed builds.
+- **A release is now:** bump the version and changelog on the branch, merge, then build locally with
+  `flutter build appbundle --release`, copy into `Hisscore/dist/`, and upload the AAB to Play by hand.
+  Verify the signer first -- `apksigner verify --print-certs` must not print `CN=Android Debug`.
+  `jarsigner` cannot check an APK here: Flutter signs v2-only, which `jarsigner` does not read.
+- **An upload keystore exists** (`~/hisscore-upload.jks`, alias `upload`, RSA 2048). `key.properties`
+  is gitignored. Losing that file means never updating the app under the same listing, so confirm it
+  is backed up somewhere off the machine before relying on it.
+- Versions are read from `Hisscore/pubspec.yaml` by `scripts/version.sh`; `CHANGELOG.md` is the record
+  of what shipped, since there are no tags to compare against. Note `scripts/version.sh check` is
+  **not** wired into CI -- nothing enforces a version bump automatically.
+- `RELEASE.md` is the pre-launch checklist: real-phone verification, screenshots, iOS (never built),
+  store listing, Data safety form.
+- **Before any release:** the Play Data safety form and `store/listing.md` still need to match the
+  privacy policy, which was corrected on 2026-09-20 to admit the leaderboard uploads a name, score
+  and anonymous Firebase ID at the end of every run. Ads will add more.
 
 ## 9. What to do next (suggested order)
 
-1. ~~Merge #31, watch the release run.~~ **Done.** It merged as #32, the release run went green first try,
-   and it produced the draft `v1.0.0` release. Publishing that draft is still a decision, not a chore.
+1. ~~Merge #31 and get a release out of CI.~~ **Abandoned on purpose.** It worked, but every artifact it
+   produced was debug-signed, so releasing from GitHub was dropped entirely (section 8). Build locally.
+   **Back up `~/hisscore-upload.jks` off the machine** if that has not been done -- it is the one step
+   here with no recovery path.
 2. **Play it on a real phone** and work through `RELEASE.md` section 1. Music was never heard by a person
    (loop, mix levels, and whether the three layers stay in step); quest and level balance are guesses.
 3. **Privacy, Data safety, store listing** updated for the leaderboard.

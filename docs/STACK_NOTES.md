@@ -7,7 +7,7 @@ Read on demand: the fill-ins `/kickoff` uses, and the traps earlier Flutter apps
 | Placeholder | Value |
 |---|---|
 | `STACK` | `Flutter x.y.z / Dart x.y.z` from `flutter --version` |
-| `FLUTTER_VERSION` | the Flutter version alone; it's used by `ci.yml`, `release.yml`, and `claude.yml` |
+| `FLUTTER_VERSION` | the Flutter version alone; it's used by `ci.yaml` (the only workflow here) |
 | `CMD_INSTALL` | `flutter pub get > $null` |
 | `CMD_ANALYZE` | `flutter analyze` |
 | `CMD_FORMAT` | `dart format lib test` |
@@ -55,7 +55,7 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
       buildTypes {
           release {
               // Falls back to the debug key when key.properties is absent, so a local
-              // release build still works; release.yml checks the bundle's real
+              // release build still works; ci.yaml checks the APK's real
               // certificate, so CI cannot ship a debug-signed one by accident.
               signingConfig = if (rootProject.file("key.properties").exists()) {
                   signingConfigs.getByName("release")
@@ -68,7 +68,7 @@ Add `windows,macos,linux` to `--platforms` if desktop is a target. Then:
   ```
 
   On the Groovy `build.gradle`, the same thing with `def keystoreProperties = new Properties()` and `signingConfigs { release { ... } }`.
-- `release.yml` dumps the release APK's permissions and hands them to `tool/check_permissions.sh`, which compares them against the `ALLOWED` list in that workflow (RUN-2) **both ways**: a permission a plugin added fails the release, and so does one the app needs and quietly lost. Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR. An empty `ALLOWED` means "declares none", not "allow anything".
+- `ci.yaml` (`build-android`) dumps the release APK's permissions and hands them to `tool/check_permissions.sh`, which compares them against the `ALLOWED` list in that workflow (RUN-2) **both ways**: a permission a plugin added fails the release, and so does one the app needs and quietly lost. Add each permission as a shipped feature needs it, space-separated (`android.permission.POST_NOTIFICATIONS`), and update the privacy policy in the same PR. An empty `ALLOWED` means "declares none", not "allow anything".
 - Delete the `desktop` job in `ci.yml` if desktop isn't a target, and the `ios` job if iOS isn't.
 
 ## Don't read
