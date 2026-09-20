@@ -30,6 +30,7 @@
     "deny": [
       "Read(./build/**)",
       "Read(./dist/**)",
+      "Read(./Hisscore/dist/**)",
       "Read(./coverage/**)",
       "Read(./.dart_tool/**)",
       "Read(./ios/Flutter/ephemeral/**)",
