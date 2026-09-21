@@ -37,6 +37,26 @@ void main() {
     ]),
   );
 
+  // A scrape survived: a low catch of breath, then the relief. Sine,
+  // and quiet in shape, so it reads as "phew" rather than "reward" —
+  // it fires next to a wall, where the player is already tense.
+  _write(
+    'closecall',
+    _tones([_Tone(294, 45, _Wave.sine), _Tone(494, 95, _Wave.sine)]),
+  );
+
+  // Beating your own best, mid-run. Deliberately higher and brighter
+  // than levelup, which it will sometimes land next to.
+  _write(
+    'newbest',
+    _tones([
+      _Tone(784, 50, _Wave.square),
+      _Tone(988, 50, _Wave.square),
+      _Tone(1319, 50, _Wave.square),
+      _Tone(1568, 140, _Wave.square),
+    ]),
+  );
+
   // Pickup stingers, one per power-up so they can be told apart by ear.
   _write(
     'star',

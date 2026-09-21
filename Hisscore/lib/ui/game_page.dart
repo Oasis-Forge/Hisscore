@@ -115,6 +115,8 @@ class _GamePageState extends State<GamePage>
             multiplier: engine.comboMultiplier,
           ))
           ..onLevelUp = effects.levelUp
+          ..onCloseCall = (() => effects.closeCall(engine.head))
+          ..onNewBest = effects.newBest
           ..onGameOver = (() => effects.died(engine.head))
           ..addListener(_redraw);
 

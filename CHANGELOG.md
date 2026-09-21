@@ -10,6 +10,10 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   input you swear you made actually saves you. Hardcore is untouched.
 - Dying now plays out in slow motion for a moment before the game-over card
   appears, so you can see what actually killed you.
+- Every scrape you steer out of is a CLOSE CALL: a label, a sting and +5
+  points, counted on the end screen.
+- Beating your own best is announced the moment it happens, instead of only
+  at game over.
 - First-time players get a moving SWIPE TO STEER hint on the menu, over the demo
   snake, until they have finished a run.
 - Pausing now shows what every pickup does, not just its name — no more guessing

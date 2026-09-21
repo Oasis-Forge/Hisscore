@@ -160,6 +160,8 @@ class ScoreBreakdown extends StatelessWidget {
           'BEST COMBO',
           '×${(1.0 + (engine.bestCombo - 1) * 0.5).toStringAsFixed(1)}',
         ),
+      if (engine.closeCalls > 0)
+        BreakdownItem('CLOSE CALLS', engine.closeCalls.toString()),
     ];
 
     return Row(

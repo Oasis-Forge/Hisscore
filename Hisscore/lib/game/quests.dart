@@ -76,12 +76,17 @@ class RunSummary {
     required this.score,
     required this.bestCombo,
     required this.powerUps,
+    this.closeCalls = 0,
   });
 
   final int apples;
   final int score;
   final int bestCombo;
   final int powerUps;
+
+  /// Scrapes the grace tick let the player steer out of. Pays no XP of
+  /// its own — the points already landed — but milestones count it.
+  final int closeCalls;
 
   /// XP for playing, before any quest bonus: an apple is worth 1, and
   /// every 20 points on top of that is worth 1.

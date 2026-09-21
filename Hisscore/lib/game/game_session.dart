@@ -63,6 +63,12 @@ class GameSession extends ChangeNotifier {
   /// Adventure advanced a level.
   void Function(int level)? onLevelUp;
 
+  /// The snake was held on the brink and steered out of it.
+  void Function()? onCloseCall;
+
+  /// The score just passed the best this device had saved.
+  void Function()? onNewBest;
+
   /// The run just ended.
   void Function()? onGameOver;
 
@@ -340,11 +346,18 @@ class GameSession extends ChangeNotifier {
       onAte?.call(eaten, engine.score - scoreBefore);
     }
 
-    // Speed changed → re-arm the ticker at the new interval.
-    if (engine.justAte) {
-      _noteHighScore();
-      armTicker();
+    if (engine.justSurvivedCloseCall) {
+      unawaited(sound.playCloseCall());
+      onCloseCall?.call();
     }
+
+    // Checked every tick, not only on an apple: a close call pays
+    // points too, and the whole point of the label is that the player
+    // learns about their new best while it is happening.
+    _noteHighScore();
+
+    // Speed changed → re-arm the ticker at the new interval.
+    if (engine.justAte) armTicker();
 
     if (engine.levelJustAdvanced) {
       unawaited(sound.playLevelUp());
@@ -374,8 +387,15 @@ class GameSession extends ChangeNotifier {
   void _noteHighScore() {
     if (!countsForLeaderboard) return;
     if (engine.score <= highScore) return;
+    // A best of zero is not a best, so a player's first ever points do
+    // not get announced as beating anything.
+    final worthSaying = highScore > 0 && !newHighScore;
     highScore = engine.score;
     newHighScore = true;
+    if (worthSaying) {
+      unawaited(sound.playNewBest());
+      onNewBest?.call();
+    }
   }
 
   Future<void> _persistHighScore() async {
@@ -422,6 +442,7 @@ class GameSession extends ChangeNotifier {
         score: engine.score,
         bestCombo: engine.bestCombo,
         powerUps: engine.powerUpsCollected,
+        closeCalls: engine.closeCalls,
       ),
       dayNumber: dailyDayNumber,
       dayKey: todayKey,

@@ -95,6 +95,8 @@ flutter:
     - assets/sfx/bonus.wav
     - assets/sfx/levelup.wav
     - assets/sfx/gameover.wav
+    - assets/sfx/closecall.wav
+    - assets/sfx/newbest.wav
     - assets/sfx/star.wav
     - assets/sfx/shield.wav
     - assets/sfx/speed.wav

@@ -208,6 +208,18 @@ class SnakeEngine {
   /// a turn arrives.
   bool get onTheBrink => graceHeld;
 
+  /// What a close call pays. Small on purpose: it is a thank-you for a
+  /// save, not a reason to go hunting for walls.
+  static const int closeCallPoints = 5;
+
+  /// Scrapes survived this run — held on the brink and steered out of
+  /// it. Worth reading on the end screen, and the thing milestones
+  /// count.
+  int closeCalls = 0;
+
+  /// A scrape was survived on this tick. One tick long, like [justAte].
+  bool justSurvivedCloseCall = false;
+
   // ─── Tick tracking ────────────────────────────────
 
   int totalTicks = 0;
@@ -275,6 +287,8 @@ class SnakeEngine {
     // Grace
     graceSpent = false;
     graceHeld = false;
+    closeCalls = 0;
+    justSurvivedCloseCall = false;
 
     // Level
     level = 1;
@@ -340,6 +354,10 @@ class SnakeEngine {
     justAte = false;
     lastEatenFood = null;
     levelJustAdvanced = false;
+    justSurvivedCloseCall = false;
+    // Whether the tick about to run is the one the snake was given to
+    // save itself. Read before the flag is cleared for this tick.
+    final wasHeld = graceHeld;
     graceHeld = false;
     totalTicks++;
     elapsedMs += tickInterval.inMilliseconds;
@@ -431,8 +449,14 @@ class SnakeEngine {
     _ensurePrimaryApple();
 
     // The snake got through a whole tick alive, so the next scrape
-    // starts with its grace intact.
+    // starts with its grace intact — and if it was on the brink when
+    // the tick began, it just steered out of one.
     graceSpent = false;
+    if (wasHeld) {
+      closeCalls++;
+      justSurvivedCloseCall = true;
+      score += (closeCallPoints * scoreMultiplier).round();
+    }
   }
 
   /// The move the snake was about to make would have killed it.

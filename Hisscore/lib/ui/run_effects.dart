@@ -109,6 +109,29 @@ class RunEffects extends ChangeNotifier {
     }
   }
 
+  /// A scrape survived. The label goes on the head, where the player's
+  /// eyes already are.
+  void closeCall(GridPoint head) {
+    spawnLabel(
+      'CLOSE CALL +${SnakeEngine.closeCallPoints}',
+      head,
+      RetroColors.shieldCyan,
+    );
+    final cell = cellCentre(head);
+    particles.emitComboSparkle(cell.dx, cell.dy);
+  }
+
+  /// The run just passed the best score on this device.
+  void newBest() {
+    spawnLabel(
+      'NEW BEST',
+      GridPoint(columns ~/ 2, rows ~/ 3),
+      RetroColors.food,
+      big: true,
+    );
+    shake.shake(intensity: 2);
+  }
+
   void levelUp(int level) {
     spawnLabel(
       'LEVEL $level!',
