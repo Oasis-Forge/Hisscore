@@ -1,36 +1,37 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
 
-import '../game/auto_player.dart';
+import '../game/attract_demo.dart';
 import '../game/challenge_code.dart';
 import '../game/daily_challenge.dart';
-import '../game/food_types.dart';
+import '../game/game_session.dart';
 import '../game/high_score_store.dart';
-import '../game/notification_service.dart';
 import '../game/online_scores.dart';
 import '../game/quests.dart';
-import '../game/review_prompter.dart';
 import '../game/snake_engine.dart';
-import '../game/sound_manager.dart';
 import 'board.dart';
 import 'controls.dart';
 import 'enter_code_dialog.dart';
-import 'floating_label.dart';
+import 'game_board_view.dart';
+import 'game_hud.dart';
 import 'game_overlay.dart';
-import 'hud_widgets.dart';
+import 'intro_cabinet.dart';
 import 'intro_panel.dart';
 import 'online_board.dart';
-import 'particles.dart';
 import 'ready_tabs.dart';
-import 'screen_shake.dart';
-import 'share_card.dart';
+import 'run_effects.dart';
+import 'share_run.dart';
 import 'snake_skin.dart';
 import 'theme.dart';
 
+/// The whole game, on one page: the arcade-cabinet menu and the
+/// full-screen run.
+///
+/// The page is the seam between three things that used to be tangled
+/// together here. [GameSession] runs the game, [RunEffects] makes the
+/// noise, and this widget measures the screen, routes input and decides
+/// which of the two screens is showing.
 class GamePage extends StatefulWidget {
   const GamePage({
     super.key,
@@ -49,38 +50,29 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  late SnakeEngine engine;
+  /// The run itself — engine, ticker, saving, progression.
+  late final GameSession session;
 
-  // Animation controllers.
+  /// The snake playing itself behind the menu.
+  late final AttractDemo demo;
+
+  /// Particles, popups, shake and flashes.
+  late final RunEffects effects;
+
+  SnakeEngine get engine => session.engine;
+
   late AnimationController pulse;
   late AnimationController titleGlow;
 
-  Timer? ticker;
-  int highScore = 0;
-  bool newHighScore = false;
-  List<ScoreEntry> topScores = [];
-  GameStats stats = GameStats();
-  DateTime? startedAt;
   final focusNode = FocusNode();
 
-  // Effects.
-  final particleSystem = ParticleSystem();
-  final shakeController = ScreenShakeController();
-
-  // Mode selection.
-  GameMode selectedMode = GameMode.classic;
-
-  // Which ready-screen tab is showing.
+  /// Which ready-screen tab, and which page of the STATS tab, is showing.
   ReadyTab readyTab = ReadyTab.modes;
+  StatsView _statsView = StatsView.local;
 
   /// Intro (cabinet, attract demo, mode picking) versus the full-screen
   /// game. The engine's own phase drives everything inside the game.
   bool showIntro = true;
-
-  /// A second engine that plays itself behind the intro screen.
-  SnakeEngine? demoEngine;
-  Timer? demoTicker;
-  DateTime _demoTickAt = DateTime.now();
 
   /// Last measured viewport, so a new game's grid can be sized to the
   /// device instead of a fixed square.
@@ -89,128 +81,44 @@ class _GamePageState extends State<GamePage>
   /// Status-bar / notch inset, excluded from the play area.
   double _topInset = 0;
 
-  /// Height of the in-game HUD band above the board.
-  static const double _hudHeight = 52;
-
   /// What the board itself will get once the HUD band is taken off the
   /// top — the grid is shaped to this, not to the whole screen.
   Size get _playAreaSize => Size(
     _viewport.width,
-    (_viewport.height - _topInset - _hudHeight).clamp(1, double.infinity),
+    (_viewport.height - _topInset - GameHud.height).clamp(1, double.infinity),
   );
 
-  // Floating popup text (score gains, combos, level-ups).
-  final List<FloatingLabel> floatingLabels = [];
-  final List<Timer> _labelTimers = [];
-  int _labelSeq = 0;
-
-  // Movement interpolation: when the current tick started, so the board
-  // can animate the snake between cells instead of jumping.
+  /// Movement interpolation: when the current tick started, so the board
+  /// can animate the snake between cells instead of jumping.
   DateTime _lastTickAt = DateTime.now();
-
-  /// When the last level-up flash fired, so it can fade out on its own.
-  DateTime? _levelFlashAt;
-  static const _levelFlashDuration = Duration(milliseconds: 420);
-
-  /// When the run ended, for the red flash that fades out after it.
-  DateTime? _deathFlashAt;
-  static const _deathFlashDuration = Duration(milliseconds: 500);
-
-  double get _deathFlashOpacity {
-    final at = _deathFlashAt;
-    if (at == null) return 0;
-    final elapsed = DateTime.now().difference(at).inMilliseconds;
-    final total = _deathFlashDuration.inMilliseconds;
-    if (elapsed >= total) return 0;
-    return 1.0 - elapsed / total;
-  }
-
-  /// 1.0 right after a level advance, fading to 0.
-  double get _levelFlashOpacity {
-    final at = _levelFlashAt;
-    if (at == null) return 0;
-    final elapsed = DateTime.now().difference(at).inMilliseconds;
-    final total = _levelFlashDuration.inMilliseconds;
-    if (elapsed >= total) return 0;
-    return 1.0 - elapsed / total;
-  }
-
-  /// Measured board geometry, so particles and popups land on the cell
-  /// they belong to instead of an assumed board size.
-  Size _boardSize = Size.zero;
-  Offset _boardOffset = Offset.zero;
-
-  /// Builds an engine sized to the current screen. Tests inject their
-  /// own engine and keep whatever grid they asked for.
-  SnakeEngine _newEngine({
-    GameMode? mode,
-    Random? random,
-    bool fixedGrid = false,
-  }) {
-    final injected = widget.engineFactory;
-    if (injected != null && random == null) return injected();
-    // The daily and challenge codes are one fixed size on every device;
-    // everything else is shaped to the screen.
-    final grid = fixedGrid
-        ? (columns: DailyChallenge.gridColumns, rows: DailyChallenge.gridRows)
-        : boardGridFor(_playAreaSize);
-    return SnakeEngine(
-      columns: grid.columns,
-      rows: grid.rows,
-      mode: mode ?? selectedMode,
-      random: random,
-    );
-  }
-
-  double get _tickProgress {
-    if (engine.phase != GamePhase.running) return 1.0;
-    final tickMs = engine.tickInterval.inMilliseconds;
-    if (tickMs <= 0) return 1.0;
-    final elapsed = DateTime.now().difference(_lastTickAt).inMicroseconds;
-    return (elapsed / (tickMs * 1000)).clamp(0.0, 1.0);
-  }
-
-  // Sound, reviews, reminders, daily challenge.
-  final soundManager = SoundManager();
-  final reviewPrompter = ReviewPrompter();
-  final notificationService = NotificationService();
-  DailyState dailyState = const DailyState();
-  bool isDailyRun = false;
-
-  /// The player's chosen handle for the global boards, if any.
-  String? _playerName;
-
-  /// XP, level and quest progress, and what the last finished run changed.
-  PlayerProgress _progress = const PlayerProgress();
-  RunOutcome? _outcome;
-
-  /// Which page of the STATS tab is showing.
-  StatsView _statsView = StatsView.local;
-
-  String get _todayKey => DailyChallenge.dateKey(DateTime.now());
-
-  /// Progress as of today: yesterday's quest state is dropped, XP kept.
-  PlayerProgress get _todayProgress => Quests.rolled(_progress, _todayKey);
-
-  String get _displayName =>
-      _playerName ?? PlayerName.defaultFor(widget.onlineScores.playerId ?? '');
-
-  /// Set while playing a friend's (or your own shared) challenge code.
-  ChallengeCode? challenge;
-
-  int get _dailyDayNumber => DailyChallenge.dayNumber(DateTime.now());
-
-  bool get _playedDailyToday => DailyChallenge.playedToday(
-    lastPlayedKey: dailyState.lastPlayedKey,
-    today: DateTime.now(),
-  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _onlineListenable?.addListener(_onOnlineChanged);
-    engine = widget.engineFactory?.call() ?? SnakeEngine(mode: selectedMode);
+
+    effects = RunEffects()..addListener(_redraw);
+
+    session =
+        GameSession(
+            store: widget.highScoreStore,
+            onlineScores: widget.onlineScores,
+            engineFactory: widget.engineFactory,
+          )
+          ..gridProvider = (() => boardGridFor(_playAreaSize))
+          ..onTick = (() => _lastTickAt = DateTime.now())
+          ..onAte = ((food, gained) => effects.ate(
+            food,
+            gained,
+            comboCount: engine.comboCount,
+            multiplier: engine.comboMultiplier,
+          ))
+          ..onLevelUp = effects.levelUp
+          ..onGameOver = (() => effects.died(engine.head))
+          ..addListener(_redraw);
+
+    demo = AttractDemo()..addListener(_redraw);
+
     pulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -219,72 +127,25 @@ class _GamePageState extends State<GamePage>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
-    unawaited(_loadHighScore());
-    unawaited(soundManager.init());
-    unawaited(notificationService.init());
-    _startDemo();
+
+    unawaited(_load());
+    unawaited(session.sound.init());
+    unawaited(session.notifications.init());
+    demo.start();
   }
 
-  /// The boards, if they can change under us (the real one connects in the
-  /// background); the no-op and test boards never change.
-  Listenable? get _onlineListenable {
-    final online = widget.onlineScores;
-    return online is Listenable ? online as Listenable : null;
-  }
-
-  /// The boards connected (or dropped): redraw so the STATS tab shows them.
-  void _onOnlineChanged() {
+  void _redraw() {
     if (mounted) setState(() {});
   }
 
-  /// Leaving the foreground must not cost the player a run: a call or a
-  /// notification would otherwise keep the ticker going and kill the
-  /// snake off-screen. The attract demo stops too, rather than
-  /// animating a menu nobody is looking at.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
+  Future<void> _load() async {
+    await session.load();
     if (!mounted) return;
-
-    if (state == AppLifecycleState.resumed) {
-      // A paused run stays paused — the player decides when to go
-      // again — but the menu comes back to life.
-      if (showIntro && demoTicker == null) _startDemo();
-      return;
-    }
-
-    if (engine.phase == GamePhase.running) {
-      setState(() {
-        engine.pause();
-        ticker?.cancel();
-      });
-    }
-    _stopDemo();
-  }
-
-  Future<void> _loadHighScore() async {
-    final value = await widget.highScoreStore.load();
-    final scores = await widget.highScoreStore.loadTopScores();
-    final loadedStats = await widget.highScoreStore.loadStats();
-    final loadedDaily = await widget.highScoreStore.loadDailyState();
-    final themeId = await widget.highScoreStore.loadThemeId();
-    final skinId = await widget.highScoreStore.loadSkinId();
-    final savedName = await widget.highScoreStore.loadPlayerName();
-    final savedProgress = await widget.highScoreStore.loadProgress();
-    if (!mounted) return;
-    setState(() {
-      highScore = value;
-      topScores = scores;
-      stats = loadedStats;
-      dailyState = loadedDaily;
-      _playerName = savedName;
-      _progress = savedProgress;
-    });
-    // A saved look the player has not earned (or has not earned yet) falls
-    // back to the free one.
-    final level = savedProgress.level;
-    final theme = GameTheme.byId(themeId);
-    final skin = SnakeSkin.byId(skinId);
+    // A saved look the player has not earned (or has not earned yet)
+    // falls back to the free one.
+    final level = session.progress.level;
+    final theme = GameTheme.byId(session.savedThemeId);
+    final skin = SnakeSkin.byId(session.savedSkinId);
     RetroColors.current = theme.unlockLevel <= level
         ? theme
         : GameTheme.phosphorGreen;
@@ -292,462 +153,86 @@ class _GamePageState extends State<GamePage>
     _rebuildAll();
   }
 
-  /// Zen mode never ends and scores climb forever — it doesn't compete
-  /// on the leaderboard or count toward the high score.
-  bool get _countsForLeaderboard => engine.mode != GameMode.zen;
-
-  /// Tracks a new high score in memory while the run is going.
-  ///
-  /// Writing to disk on every apple meant a store write (and a second
-  /// prefs read from the review prompter) every tick or so late in a
-  /// run. The number on screen is state, not storage — it gets flushed
-  /// once, when the run ends.
-  void _noteHighScore() {
-    if (!_countsForLeaderboard) return;
-    if (engine.score <= highScore) return;
-    highScore = engine.score;
-    newHighScore = true;
-  }
-
-  Future<void> _persistHighScore() async {
-    if (!_countsForLeaderboard) return;
-    if (engine.score > highScore) {
-      highScore = engine.score;
-      newHighScore = true;
-    }
-    if (!newHighScore) return;
-    await widget.highScoreStore.save(highScore);
-    unawaited(reviewPrompter.maybePrompt(gamesPlayed: stats.gamesPlayed));
-  }
-
-  Future<void> _persistGameEnd() async {
-    await _persistHighScore();
-    if (_countsForLeaderboard) {
-      await widget.highScoreStore.saveScoreEntry(
-        ScoreEntry(
-          score: engine.score,
-          level: engine.level,
-          mode: engine.mode.label,
-        ),
-      );
-    }
-    await widget.highScoreStore.updateStats(engine);
-    final scores = await widget.highScoreStore.loadTopScores();
-    final loadedStats = await widget.highScoreStore.loadStats();
-    if (mounted) {
-      setState(() {
-        topScores = scores;
-        stats = loadedStats;
-      });
-    }
-    if (isDailyRun) {
-      await _persistDailyResult();
-    }
-    await _recordProgress();
-    unawaited(_submitOnline());
-  }
-
-  /// Pays out XP for the run just finished and moves today's quests
-  /// along, and remembers what changed so the game-over card can show it.
-  Future<void> _recordProgress() async {
-    final outcome = Quests.apply(
-      _progress,
-      RunSummary(
-        apples: engine.totalApplesEaten,
-        score: engine.score,
-        bestCombo: engine.bestCombo,
-        powerUps: engine.powerUpsCollected,
-      ),
-      dayNumber: _dailyDayNumber,
-      dayKey: _todayKey,
-    );
-    await widget.highScoreStore.saveProgress(outcome.progress);
+  /// Leaving the foreground must not cost the player a run. The attract
+  /// demo stops too, rather than animating a menu nobody is looking at.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
     if (!mounted) return;
-    setState(() {
-      _progress = outcome.progress;
-      _outcome = outcome;
-    });
+    if (state == AppLifecycleState.resumed) {
+      // A paused run stays paused — the player decides when to go
+      // again — but the menu comes back to life.
+      if (showIntro && !demo.running) demo.start();
+      return;
+    }
+    session.handleAppBackgrounded();
+    demo.stop();
   }
 
-  /// Posts this run to the global boards, best-effort: a missing backend or
-  /// a failed request must never get in the way of the game.
-  Future<void> _submitOnline() async {
-    final online = widget.onlineScores;
-    if (!online.available || engine.score <= 0) return;
-    final name = _displayName;
-    try {
-      if (isDailyRun) {
-        await online.submit(
-          BoardId.daily(_dailyDayNumber),
-          name: name,
-          score: engine.score,
-        );
-      }
-      if (_countsForLeaderboard) {
-        await online.submit(
-          BoardId.allTime(engine.mode),
-          name: name,
-          score: engine.score,
-        );
-      }
-    } catch (e) {
-      debugPrint('Online score submit failed: $e');
-    }
-  }
-
-  Future<void> _editName() async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => EditNameDialog(current: _displayName),
-    );
-    if (name == null || !mounted) return;
-    setState(() => _playerName = name);
-    await widget.highScoreStore.savePlayerName(name);
-  }
-
-  /// Updates the daily-challenge streak after a daily run ends, and — the
-  /// first time a daily run is completed — asks for notification
-  /// permission and schedules a "keep your streak" reminder for tomorrow.
-  Future<void> _persistDailyResult() async {
-    final today = DateTime.now();
-    final alreadyPlayedToday = _playedDailyToday;
-    final newStreak = DailyChallenge.nextStreak(
-      lastPlayedKey: dailyState.lastPlayedKey,
-      previousStreak: dailyState.currentStreak,
-      today: today,
-    );
-    final newState = DailyState(
-      lastPlayedKey: DailyChallenge.dateKey(today),
-      lastScore: alreadyPlayedToday
-          ? max(engine.score, dailyState.lastScore)
-          : engine.score,
-      currentStreak: newStreak,
-      bestStreak: max(newStreak, dailyState.bestStreak),
-    );
-    await widget.highScoreStore.saveDailyState(newState);
-    if (mounted) {
-      setState(() => dailyState = newState);
-    }
-    if (!alreadyPlayedToday) {
-      await notificationService.requestPermission();
-      await notificationService.scheduleStreakReminder(streak: newStreak);
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    session.removeListener(_redraw);
+    demo.removeListener(_redraw);
+    effects.removeListener(_redraw);
+    session.dispose();
+    demo.dispose();
+    effects.dispose();
+    pulse.dispose();
+    titleGlow.dispose();
+    focusNode.dispose();
+    super.dispose();
   }
 
   // ═══════════════════════════════════════════════════
-  // Attract mode
+  // Input
   // ═══════════════════════════════════════════════════
-
-  /// Runs a snake that plays itself behind the intro, so the menu shows
-  /// the game rather than describing it.
-  void _startDemo() {
-    demoTicker?.cancel();
-    final demo = SnakeEngine(
-      columns: 20,
-      rows: 20,
-      mode: GameMode.endless, // wraps, so the demo rarely stalls
-    );
-    demo.start();
-    demoEngine = demo;
-    _demoTickAt = DateTime.now();
-    demoTicker = Timer.periodic(const Duration(milliseconds: 170), (_) {
-      if (!mounted || !showIntro) return;
-      setState(() {
-        _demoTickAt = DateTime.now();
-        final next = AutoPlayer.chooseDirection(demo);
-        if (next != null) demo.queueTurn(next);
-        demo.tick();
-        // Cornered itself — start over rather than sit on a dead board.
-        if (demo.phase != GamePhase.running) {
-          demo.reset();
-          demo.start();
-        }
-      });
-    });
-  }
-
-  void _stopDemo() {
-    demoTicker?.cancel();
-    demoTicker = null;
-    demoEngine = null;
-  }
-
-  double get _demoTickProgress {
-    final demo = demoEngine;
-    if (demo == null) return 1;
-    final tickMs = demo.tickInterval.inMilliseconds;
-    if (tickMs <= 0) return 1;
-    final elapsed = DateTime.now().difference(_demoTickAt).inMicroseconds;
-    return (elapsed / (tickMs * 1000)).clamp(0.0, 1.0);
-  }
-
-  void _armTicker() {
-    ticker?.cancel();
-    if (engine.phase != GamePhase.running) return;
-    _lastTickAt = DateTime.now();
-    ticker = Timer.periodic(engine.tickInterval, (_) {
-      if (!mounted) return;
-      final scoreBefore = engine.score;
-      setState(() {
-        _lastTickAt = DateTime.now();
-        engine.tick();
-
-        // Eat particles + floating popup.
-        if (engine.justAte && engine.lastEatenFood != null) {
-          final pos = engine.lastEatenFood!.position;
-          _emitEatParticles(pos);
-          unawaited(soundManager.playPickup(engine.lastEatenFood!.type));
-          final gained = engine.score - scoreBefore;
-          if (gained > 0) {
-            _spawnLabel('+$gained', pos, RetroColors.phosphorHot);
-          }
-          if (engine.comboCount > 1) {
-            _spawnLabel(
-              'COMBO x${engine.comboMultiplier.toStringAsFixed(1)}',
-              GridPoint(pos.x, pos.y - 1),
-              RetroColors.combo,
-              big: true,
-            );
-          }
-        }
-
-        // Speed changed → re-arm ticker.
-        if (engine.justAte) {
-          _noteHighScore();
-          _armTicker();
-        }
-
-        // Level advanced banner.
-        if (engine.levelJustAdvanced) {
-          _spawnLabel(
-            'LEVEL ${engine.level}!',
-            GridPoint(engine.columns ~/ 2, engine.rows ~/ 2),
-            RetroColors.amber,
-            big: true,
-          );
-          shakeController.shake(intensity: 3);
-          _levelFlashAt = DateTime.now();
-          unawaited(soundManager.playLevelUp());
-        }
-
-        // Game over.
-        if (engine.phase == GamePhase.gameOver) {
-          ticker?.cancel();
-          _emitDeathParticles();
-          shakeController.shake(intensity: 8);
-          _deathFlashAt = DateTime.now();
-          unawaited(soundManager.playGameOver());
-          unawaited(_persistGameEnd());
-        }
-      });
-    });
-  }
-
-  /// Spawns a floating text popup at a grid position; it rises and
-  /// fades, then removes itself.
-  void _spawnLabel(
-    String text,
-    GridPoint gridPos,
-    Color color, {
-    bool big = false,
-  }) {
-    final cell = _cellCenter(gridPos);
-    final id = _labelSeq++;
-    floatingLabels.add(
-      FloatingLabel(
-        id: id,
-        text: text,
-        // Labels sit in the board *area*, so shift by where the board
-        // itself is within it.
-        x: cell.dx + _boardOffset.dx,
-        y: cell.dy + _boardOffset.dy,
-        color: color,
-        big: big,
-      ),
-    );
-    late final Timer timer;
-    timer = Timer(const Duration(milliseconds: 700), () {
-      _labelTimers.remove(timer);
-      if (!mounted) return;
-      setState(() => floatingLabels.removeWhere((l) => l.id == id));
-    });
-    _labelTimers.add(timer);
-  }
-
-  /// Centre of a grid cell in the board's own pixel space — the same
-  /// space the painter (and therefore the particle system) draws in.
-  Offset _cellCenter(GridPoint point) {
-    final cellW = _boardSize.width / engine.columns;
-    final cellH = _boardSize.height / engine.rows;
-    return Offset(point.x * cellW + cellW / 2, point.y * cellH + cellH / 2);
-  }
-
-  void _emitEatParticles(GridPoint pos) {
-    final cell = _cellCenter(pos);
-    final cx = cell.dx;
-    final cy = cell.dy;
-
-    final color = switch (engine.lastEatenFood?.type) {
-      FoodType.apple => RetroColors.food,
-      FoodType.star => RetroColors.starGold,
-      FoodType.shield => RetroColors.shieldCyan,
-      FoodType.speedBurst => RetroColors.speedYellow,
-      FoodType.shrink => RetroColors.shrinkPurple,
-      FoodType.magnet => RetroColors.magnetPink,
-      _ => RetroColors.phosphor,
-    };
-    particleSystem.emitEat(cx, cy, color);
-
-    if (engine.comboCount > 1) {
-      particleSystem.emitComboSparkle(cx, cy - 10);
-    }
-  }
-
-  void _emitDeathParticles() {
-    final cell = _cellCenter(engine.head);
-    particleSystem.emitDeath(cell.dx, cell.dy, RetroColors.cherry);
-  }
 
   void _onPrimary() {
-    setState(() {
-      if (engine.phase == GamePhase.running) {
-        final justStarted =
-            startedAt != null &&
-            DateTime.now().difference(startedAt!) <
-                const Duration(milliseconds: 400);
-        if (justStarted) return;
-        engine.pause();
-        ticker?.cancel();
-        return;
-      }
-      newHighScore = false;
-      _outcome = null;
-      if (engine.phase == GamePhase.gameOver ||
-          engine.phase == GamePhase.ready) {
-        // A fresh run always gets an engine sized to this screen.
-        engine = _newEngine();
-        engine.mode = selectedMode;
-        isDailyRun = false;
-        challenge = null;
-      }
-      particleSystem.clear();
-      floatingLabels.clear();
-      engine.start();
-      startedAt = DateTime.now();
-      focusNode.requestFocus();
-      _armTicker();
-    });
+    // A run that is about to start gets a clean screen; pausing and
+    // resuming keeps whatever is on it.
+    if (engine.phase != GamePhase.running) effects.clear();
+    session.primaryAction();
+    focusNode.requestFocus();
   }
+
+  void _onTurn(Direction direction) => session.turn(direction);
 
   /// Leaves the intro for the full-screen game.
   void _enterGame() {
-    _stopDemo();
+    demo.stop();
     setState(() => showIntro = false);
     _onPrimary();
   }
 
   /// Back to the intro, demo running again.
   void _returnToIntro() {
-    setState(() {
-      ticker?.cancel();
-      engine = _newEngine();
-      engine.reset();
-      engine.phase = GamePhase.ready;
-      newHighScore = false;
-      _outcome = null;
-      isDailyRun = false;
-      challenge = null;
-      showIntro = true;
-      particleSystem.clear();
-      floatingLabels.clear();
-      focusNode.requestFocus();
-    });
-    _startDemo();
+    session.returnToMenu();
+    effects.clear();
+    setState(() => showIntro = true);
+    focusNode.requestFocus();
+    demo.start();
   }
 
-  /// Android's back gesture: pause a run, leave a finished or paused one,
-  /// and only close the app from the intro.
+  /// Android's back gesture: pause a run, leave a finished or paused
+  /// one, and only close the app from the intro.
   void _onSystemBack() {
     if (showIntro) return;
     if (engine.phase == GamePhase.running) {
-      setState(() {
-        engine.pause();
-        ticker?.cancel();
-      });
+      session.pause();
       return;
     }
     _returnToIntro();
   }
 
-  void _onTurn(Direction direction) {
-    setState(() {
-      final wasReady = engine.phase == GamePhase.ready;
-      engine.queueTurn(direction);
-      if (wasReady && engine.phase == GamePhase.running) {
-        _armTicker();
-      }
-    });
-  }
-
-  void _onExitToMenu() => _returnToIntro();
-
-  /// Starts today's daily challenge: a Classic run seeded from the
-  /// date, so the same device gets the same board all day.
-  ///
-  /// Note the grid now follows the screen, so two different-sized
-  /// phones no longer see an identical layout. That only starts to
-  /// matter if daily scores are ever compared across devices.
-  void _startDailyChallenge() {
-    _stopDemo();
-    setState(() {
-      ticker?.cancel();
-      final seed = DailyChallenge.seedForDay(_dailyDayNumber);
-      engine = _newEngine(
-        mode: GameMode.classic,
-        random: Random(seed),
-        fixedGrid: true,
-      );
-      engine.mode = GameMode.classic;
-      selectedMode = GameMode.classic;
-      isDailyRun = true;
-      challenge = null;
-      newHighScore = false;
-      _outcome = null;
-      showIntro = false;
-      particleSystem.clear();
-      floatingLabels.clear();
-      engine.start();
-      startedAt = DateTime.now();
-      focusNode.requestFocus();
-    });
-    _armTicker();
-  }
-
-  /// Starts the game a challenge code names: its mode, its seed, and the
-  /// daily's fixed grid, so everyone who plays the code plays the same board.
-  void _startChallenge(ChallengeCode code) {
-    _stopDemo();
-    setState(() {
-      ticker?.cancel();
-      engine = _newEngine(
-        mode: code.mode,
-        random: Random(code.seed),
-        fixedGrid: true,
-      );
-      engine.mode = code.mode;
-      selectedMode = code.mode;
-      isDailyRun = false;
-      challenge = code;
-      newHighScore = false;
-      _outcome = null;
-      showIntro = false;
-      particleSystem.clear();
-      floatingLabels.clear();
-      engine.start();
-      startedAt = DateTime.now();
-      focusNode.requestFocus();
-    });
-    _armTicker();
+  /// Both seeded starts — today's daily and a friend's code — leave the
+  /// menu the same way.
+  void _startSeeded(void Function() start) {
+    demo.stop();
+    effects.clear();
+    setState(() => showIntro = false);
+    start();
+    focusNode.requestFocus();
   }
 
   /// Asks for a friend's code and, if it is valid, plays it.
@@ -756,21 +241,44 @@ class _GamePageState extends State<GamePage>
       context: context,
       builder: (context) => const EnterCodeDialog(),
     );
-    if (code != null && mounted) _startChallenge(code);
+    if (code != null && mounted) {
+      _startSeeded(() => session.startChallenge(code));
+    }
   }
+
+  Future<void> _editName() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => EditNameDialog(current: session.displayName),
+    );
+    if (name == null || !mounted) return;
+    await session.setPlayerName(name);
+  }
+
+  Future<void> _shareScore() => shareRun(
+    engine: engine,
+    isDailyRun: session.isDailyRun,
+    dailyDayNumber: session.dailyDayNumber,
+    dailyState: session.dailyState,
+    challenge: session.challenge,
+  );
+
+  // ═══════════════════════════════════════════════════
+  // Look
+  // ═══════════════════════════════════════════════════
 
   /// Applies [theme] everywhere and remembers it. Most widgets read the
   /// palette in build(), but some are const and would never notice, so
   /// the whole tree is marked dirty (state is kept).
   void _setTheme(GameTheme theme) {
-    if (theme.unlockLevel > _progress.level) return;
+    if (theme.unlockLevel > session.progress.level) return;
     RetroColors.current = theme;
     unawaited(widget.highScoreStore.saveThemeId(theme.id));
     _rebuildAll();
   }
 
   void _setSkin(SnakeSkin skin) {
-    if (skin.unlockLevel > _progress.level) return;
+    if (skin.unlockLevel > session.progress.level) return;
     setState(() => SnakeSkin.current = skin);
     unawaited(widget.highScoreStore.saveSkinId(skin.id));
   }
@@ -785,68 +293,6 @@ class _GamePageState extends State<GamePage>
     setState(() {});
   }
 
-  /// Shares the current run's result via the platform share sheet.
-  Future<void> _shareScore() async {
-    final text = isDailyRun
-        ? DailyChallenge.resultText(
-            dayNumber: _dailyDayNumber,
-            score: engine.score,
-            apples: engine.totalApplesEaten,
-            bestCombo: engine.bestCombo,
-            streak: dailyState.currentStreak,
-          )
-        : challenge != null
-        ? 'HISCORE challenge ${challenge!.text} — ${engine.mode.label}'
-              ' — Score ${engine.score} 🐍\n'
-              'Beat it: ENTER CODE ${challenge!.text}'
-        : 'HISSCORE — ${engine.mode.label} — Score ${engine.score}'
-              '${engine.mode == GameMode.adventure ? ' (Level ${engine.level})' : ''} 🐍\n'
-              'Can you beat it?';
-    try {
-      // The image is the point; the text is the fallback and the caption.
-      List<XFile>? files;
-      try {
-        final png = await renderShareCard(
-          engine: engine,
-          subtitle: isDailyRun
-              ? 'DAILY #$_dailyDayNumber  ·  STREAK ${dailyState.currentStreak}'
-              : challenge != null
-              ? '${engine.mode.label}  ·  ${challenge!.text}'
-              : engine.mode.label,
-        );
-        files = [XFile.fromData(png, mimeType: 'image/png')];
-      } catch (e) {
-        debugPrint('Share card failed, sharing text only: $e');
-      }
-      await SharePlus.instance.share(
-        ShareParams(
-          text: text,
-          files: files,
-          fileNameOverrides: files == null ? null : ['hisscore.png'],
-        ),
-      );
-    } catch (e) {
-      debugPrint('Share failed: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _onlineListenable?.removeListener(_onOnlineChanged);
-    ticker?.cancel();
-    demoTicker?.cancel();
-    for (final t in _labelTimers) {
-      t.cancel();
-    }
-    unawaited(soundManager.dispose());
-    pulse.dispose();
-    titleGlow.dispose();
-    focusNode.dispose();
-    shakeController.dispose();
-    super.dispose();
-  }
-
   // ═══════════════════════════════════════════════════
   // Build
   // ═══════════════════════════════════════════════════
@@ -854,60 +300,20 @@ class _GamePageState extends State<GamePage>
   @override
   Widget build(BuildContext context) {
     // Every transition that matters (play, pause, game over, menu, a
-    // combo change) goes through setState, so the music follows along
+    // combo change) goes through a rebuild, so the music follows along
     // from here. syncMusic only acts when something actually changed.
-    soundManager.syncMusic(
+    session.sound.syncMusic(
       playing: !showIntro && engine.phase == GamePhase.running,
       combo: engine.comboCount,
     );
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-            _onTurn(Direction.up),
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-            _onTurn(Direction.down),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-            _onTurn(Direction.left),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _onTurn(Direction.right),
-        const SingleActivator(LogicalKeyboardKey.keyW): () =>
-            _onTurn(Direction.up),
-        const SingleActivator(LogicalKeyboardKey.keyS): () =>
-            _onTurn(Direction.down),
-        const SingleActivator(LogicalKeyboardKey.keyA): () =>
-            _onTurn(Direction.left),
-        const SingleActivator(LogicalKeyboardKey.keyD): () =>
-            _onTurn(Direction.right),
-        const SingleActivator(LogicalKeyboardKey.space): _onPrimary,
-        const SingleActivator(LogicalKeyboardKey.enter): _onPrimary,
-        const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (engine.phase == GamePhase.running) {
-            setState(() {
-              engine.pause();
-              ticker?.cancel();
-            });
-          } else if (engine.phase == GamePhase.paused ||
-              engine.phase == GamePhase.gameOver) {
-            _onExitToMenu();
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.keyP): () {
-          if (engine.phase == GamePhase.running ||
-              engine.phase == GamePhase.paused) {
-            _onPrimary();
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.keyM): () {
-          if (engine.phase != GamePhase.ready) {
-            _onExitToMenu();
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.keyQ): () {
-          if (engine.phase != GamePhase.ready) {
-            _onExitToMenu();
-          }
-        },
-      },
+      bindings: gameKeyBindings(
+        phase: () => engine.phase,
+        onTurn: _onTurn,
+        onPrimary: _onPrimary,
+        onPause: session.pause,
+        onExitToMenu: _returnToIntro,
+      ),
       child: Focus(
         focusNode: focusNode,
         autofocus: true,
@@ -936,6 +342,7 @@ class _GamePageState extends State<GamePage>
   /// The intro: cabinet chrome, the attract demo playing in its screen,
   /// and everything you pick before a run.
   Widget _buildIntro() {
+    final ready = engine.phase == GamePhase.ready;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -953,179 +360,32 @@ class _GamePageState extends State<GamePage>
               height: 800,
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: _buildCabinet(),
+                child: IntroCabinet(
+                  titleGlow: titleGlow,
+                  subtitle: ready ? 'RETRO SNAKE' : engine.mode.label,
+                  subtitleColor: ready
+                      ? RetroColors.phosphorDim
+                      : engine.mode.accentColor,
+                  soundEnabled: session.sound.enabled,
+                  musicEnabled: session.sound.musicEnabled,
+                  onToggleSound: () {
+                    unawaited(session.sound.setEnabled(!session.sound.enabled));
+                    setState(() {});
+                  },
+                  onToggleMusic: () {
+                    unawaited(
+                      session.sound.setMusicEnabled(
+                        !session.sound.musicEnabled,
+                      ),
+                    );
+                    setState(() {});
+                  },
+                  screen: _buildIntroScreenArea(),
+                  onPlay: _enterGame,
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  /// The game: board edge to edge, a thin HUD over it, gestures only.
-  Widget _buildGameScreen() {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          // The HUD gets its own band rather than floating over the
-          // playfield — otherwise the snake runs underneath the score.
-          SizedBox(height: _hudHeight, child: _buildGameHud()),
-          Expanded(child: _buildBoardStack()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGameHud() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
-      decoration: BoxDecoration(
-        color: RetroColors.voidBg,
-        border: Border(
-          bottom: BorderSide(color: RetroColors.phosphorDim, width: 1.5),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ScoreReadout(label: 'SCORE', value: engine.score),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 2,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (engine.mode == GameMode.adventure)
-                  MiniStat(label: 'LVL', value: engine.level.toString()),
-                if (engine.comboCount > 1)
-                  MiniStat(
-                    label: 'COMBO',
-                    value: '×${engine.comboMultiplier.toStringAsFixed(1)}',
-                    color: RetroColors.combo,
-                  ),
-                if (engine.hasShield)
-                  const MiniStat(
-                    label: '',
-                    value: '🛡',
-                    color: RetroColors.shieldCyan,
-                  ),
-                if (engine.magnetActive)
-                  const MiniStat(
-                    label: '',
-                    value: '🧲',
-                    color: RetroColors.magnetPink,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          ScoreReadout(label: 'HI', value: highScore, highlight: true),
-          const SizedBox(width: 10),
-          PauseButton(
-            onPressed: () {
-              if (engine.phase != GamePhase.running) return;
-              setState(() {
-                engine.pause();
-                ticker?.cancel();
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCabinet() {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF201810),
-            RetroColors.cabinet,
-            const Color(0xFF181010),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: RetroColors.cabinetRim, width: 5),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black54,
-            blurRadius: 28,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-        child: Column(
-          children: [
-            // ── Title ──
-            _buildTitle(),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  engine.phase == GamePhase.ready
-                      ? 'RETRO SNAKE'
-                      : engine.mode.label,
-                  style: RetroText.pixel(
-                    size: 7,
-                    color: engine.phase == GamePhase.ready
-                        ? RetroColors.phosphorDim
-                        : engine.mode.accentColor,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    final next = !soundManager.enabled;
-                    unawaited(soundManager.setEnabled(next));
-                    setState(() {});
-                  },
-                  child: Icon(
-                    soundManager.enabled ? Icons.volume_up : Icons.volume_off,
-                    size: 12,
-                    color: RetroColors.phosphorDim,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    final next = !soundManager.musicEnabled;
-                    unawaited(soundManager.setMusicEnabled(next));
-                    setState(() {});
-                  },
-                  child: Icon(
-                    soundManager.musicEnabled
-                        ? Icons.music_note
-                        : Icons.music_off,
-                    size: 12,
-                    color: RetroColors.phosphorDim,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // ── Attract demo with the menu over it ──
-            Expanded(child: _buildIntroScreenArea()),
-            const SizedBox(height: 14),
-
-            // ── Start ──
-            ArcadeActionButton(label: 'PLAY', onPressed: _enterGame),
-            const SizedBox(height: 8),
-            Text(
-              'SWIPE TO STEER  ·  ARROWS / WASD',
-              textAlign: TextAlign.center,
-              style: RetroText.pixel(size: 7, color: RetroColors.metal),
-            ),
-          ],
         ),
       ),
     );
@@ -1134,46 +394,44 @@ class _GamePageState extends State<GamePage>
   /// The cabinet's screen on the intro: the demo snake playing itself,
   /// with the mode picker and friends laid over it.
   Widget _buildIntroScreenArea() {
-    final demo = demoEngine;
+    final demoEngine = demo.engine;
     return AnimatedBuilder(
       animation: pulse,
       builder: (context, _) {
         return Stack(
           fit: StackFit.expand,
           children: [
-            if (demo != null)
+            if (demoEngine != null)
               SnakeBoard(
-                engine: demo,
+                engine: demoEngine,
                 pulse: pulse.value,
-                tickProgress: _demoTickProgress,
+                tickProgress: demo.tickProgress,
               ),
             IntroPanel(
               blinkOn: pulse.value > 0.4,
-              selectedMode: selectedMode,
-              onModeChanged: (mode) {
-                setState(() {
-                  selectedMode = mode;
-                  engine.mode = mode;
-                });
-              },
+              selectedMode: session.selectedMode,
+              onModeChanged: session.setMode,
               readyTab: readyTab,
               onReadyTabChanged: (tab) => setState(() => readyTab = tab),
-              stats: stats,
-              topScores: topScores,
-              dailyDayNumber: _dailyDayNumber,
-              dailyState: dailyState,
-              playedDailyToday: _playedDailyToday,
-              onStartDaily: _startDailyChallenge,
-              onNewChallenge: () =>
-                  _startChallenge(ChallengeCode.random(selectedMode)),
+              stats: session.stats,
+              topScores: session.topScores,
+              dailyDayNumber: session.dailyDayNumber,
+              dailyState: session.dailyState,
+              playedDailyToday: session.playedDailyToday,
+              onStartDaily: () => _startSeeded(session.startDaily),
+              onNewChallenge: () => _startSeeded(
+                () => session.startChallenge(
+                  ChallengeCode.random(session.selectedMode),
+                ),
+              ),
               onEnterCode: _enterCode,
               online: widget.onlineScores,
-              playerName: _displayName,
+              playerName: session.displayName,
               onEditName: _editName,
               statsView: _statsView,
               onStatsViewChanged: (v) => setState(() => _statsView = v),
-              progress: _todayProgress,
-              quests: Quests.forDay(_dailyDayNumber),
+              progress: session.todayProgress,
+              quests: Quests.forDay(session.dailyDayNumber),
               onOpenQuests: () => setState(() {
                 readyTab = ReadyTab.stats;
                 _statsView = StatsView.quests;
@@ -1189,39 +447,25 @@ class _GamePageState extends State<GamePage>
     );
   }
 
-  Widget _buildTitle() {
-    return AnimatedBuilder(
-      animation: titleGlow,
-      builder: (context, _) {
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            final glowPos = titleGlow.value;
-            return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                RetroColors.amber,
-                RetroColors.phosphorHot,
-                RetroColors.amber,
-              ],
-              stops: [
-                (glowPos - 0.3).clamp(0.0, 1.0),
-                glowPos,
-                (glowPos + 0.3).clamp(0.0, 1.0),
-              ],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcIn,
-          child: Text(
-            'HISCORE',
-            style: RetroText.pixel(
-              size: 22,
-              color: Colors.white,
-              letterSpacing: 4,
+  /// The game: board edge to edge, a thin HUD over it, gestures only.
+  Widget _buildGameScreen() {
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          // The HUD gets its own band rather than floating over the
+          // playfield — otherwise the snake runs underneath the score.
+          SizedBox(
+            height: GameHud.height,
+            child: GameHud(
+              engine: engine,
+              highScore: session.highScore,
+              onPause: session.pause,
             ),
           ),
-        );
-      },
+          Expanded(child: _buildBoardStack()),
+        ],
+      ),
     );
   }
 
@@ -1230,28 +474,29 @@ class _GamePageState extends State<GamePage>
       builder: (context, constraints) {
         // The board fills this area edge to edge, so its geometry is
         // simply the area itself — particles and popups ride on it.
-        var area = constraints.biggest;
-        // The daily and challenges have a fixed shape; on a screen of another
-        // shape they are letterboxed rather than stretched.
+        final area = constraints.biggest;
+        // The daily and challenges have a fixed shape; on a screen of
+        // another shape they are letterboxed rather than stretched.
         final fixed =
-            (isDailyRun || challenge != null) &&
+            (session.isDailyRun || session.challenge != null) &&
             engine.columns == DailyChallenge.gridColumns &&
             engine.rows == DailyChallenge.gridRows;
-        if (fixed) {
-          final fit = _fitAspect(area, DailyChallenge.gridAspect);
-          _boardSize = fit;
-          _boardOffset = Offset.zero;
-          return Center(
-            child: SizedBox(
-              width: fit.width,
-              height: fit.height,
-              child: _buildBoardLayers(),
-            ),
-          );
-        }
-        _boardSize = area;
-        _boardOffset = Offset.zero;
-        return _buildBoardLayers();
+        final size = fixed ? _fitAspect(area, DailyChallenge.gridAspect) : area;
+        effects.measure(
+          size: size,
+          offset: Offset.zero,
+          columns: engine.columns,
+          rows: engine.rows,
+        );
+        final layers = _buildBoardLayers();
+        if (!fixed) return layers;
+        return Center(
+          child: SizedBox(
+            width: size.width,
+            height: size.height,
+            child: layers,
+          ),
+        );
       },
     );
   }
@@ -1264,76 +509,43 @@ class _GamePageState extends State<GamePage>
     return Size(area.width, area.width / aspect);
   }
 
+  double get _tickProgress {
+    if (engine.phase != GamePhase.running) return 1.0;
+    final tickMs = engine.tickInterval.inMilliseconds;
+    if (tickMs <= 0) return 1.0;
+    final elapsed = DateTime.now().difference(_lastTickAt).inMicroseconds;
+    return (elapsed / (tickMs * 1000)).clamp(0.0, 1.0);
+  }
+
   Widget _buildBoardLayers() {
-    return AnimatedBuilder(
-      animation: pulse,
-      builder: (context, _) {
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ScreenShake(
-              controller: shakeController,
-              child: SnakeBoard(
-                engine: engine,
-                pulse: pulse.value,
-                tickProgress: _tickProgress,
-                particles: particleSystem,
-                onSwipe: _onTurn,
-                fullBleed: true,
-              ),
-            ),
-            // Level-up: the screen edges pulse amber, over the board but
-            // under the popups. An edge glow rather than a full-screen
-            // flash, so the snake stays readable while it plays.
-            if (_levelFlashOpacity > 0)
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      radius: 0.95,
-                      colors: [
-                        Colors.transparent,
-                        RetroColors.amber.withValues(
-                          alpha: 0.6 * _levelFlashOpacity,
-                        ),
-                      ],
-                      stops: const [0.55, 1.0],
-                    ),
-                  ),
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            for (final label in floatingLabels)
-              FloatingLabelView(key: ValueKey(label.id), label: label),
-            if (engine.phase == GamePhase.paused ||
-                engine.phase == GamePhase.gameOver)
-              GameOverlay(
-                phase: engine.phase,
-                engine: engine,
-                won: engine.won,
-                newHighScore: newHighScore,
-                isDailyRun: isDailyRun,
-                challengeCode: challenge?.text,
-                outcome: _outcome,
-                dailyDayNumber: _dailyDayNumber,
-                dailyState: dailyState,
-                onShare: _shareScore,
-                onResume: _onPrimary,
-                onExitToMenu: _onExitToMenu,
-              ),
-            // Death: a quick red flash before the game-over card settles in.
-            if (_deathFlashOpacity > 0)
-              IgnorePointer(
-                child: ColoredBox(
-                  color: RetroColors.cherry.withValues(
-                    alpha: 0.4 * _deathFlashOpacity,
-                  ),
-                  child: const SizedBox.expand(),
-                ),
-              ),
-          ],
-        );
-      },
+    final showOverlay =
+        engine.phase == GamePhase.paused || engine.phase == GamePhase.gameOver;
+    return GameBoardView(
+      engine: engine,
+      pulse: pulse,
+      tickProgress: _tickProgress,
+      particles: effects.particles,
+      shake: effects.shake,
+      labels: effects.labels,
+      levelFlashOpacity: effects.levelFlashOpacity,
+      deathFlashOpacity: effects.deathFlashOpacity,
+      onSwipe: _onTurn,
+      overlay: showOverlay
+          ? GameOverlay(
+              phase: engine.phase,
+              engine: engine,
+              won: engine.won,
+              newHighScore: session.newHighScore,
+              isDailyRun: session.isDailyRun,
+              challengeCode: session.challenge?.text,
+              outcome: session.outcome,
+              dailyDayNumber: session.dailyDayNumber,
+              dailyState: session.dailyState,
+              onShare: _shareScore,
+              onExitToMenu: _returnToIntro,
+              onResume: _onPrimary,
+            )
+          : null,
     );
   }
 }

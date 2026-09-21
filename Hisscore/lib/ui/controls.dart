@@ -360,3 +360,52 @@ class FoodLegend extends StatelessWidget {
     );
   }
 }
+
+// ─── Keyboard ───────────────────────────────────────
+
+/// Everything the keyboard can do during a game.
+///
+/// Arrows and WASD steer; space and enter are the one primary action
+/// (play, pause, resume); escape pauses a run and leaves a finished
+/// one; P toggles pause; M and Q go back to the menu. The bindings that
+/// depend on where the game is read [phase] when they fire rather than
+/// when they are built, so one map serves every phase.
+Map<ShortcutActivator, VoidCallback> gameKeyBindings({
+  required GamePhase Function() phase,
+  required void Function(Direction) onTurn,
+  required VoidCallback onPrimary,
+  required VoidCallback onPause,
+  required VoidCallback onExitToMenu,
+}) {
+  SingleActivator key(LogicalKeyboardKey k) => SingleActivator(k);
+  return {
+    key(LogicalKeyboardKey.arrowUp): () => onTurn(Direction.up),
+    key(LogicalKeyboardKey.arrowDown): () => onTurn(Direction.down),
+    key(LogicalKeyboardKey.arrowLeft): () => onTurn(Direction.left),
+    key(LogicalKeyboardKey.arrowRight): () => onTurn(Direction.right),
+    key(LogicalKeyboardKey.keyW): () => onTurn(Direction.up),
+    key(LogicalKeyboardKey.keyS): () => onTurn(Direction.down),
+    key(LogicalKeyboardKey.keyA): () => onTurn(Direction.left),
+    key(LogicalKeyboardKey.keyD): () => onTurn(Direction.right),
+    key(LogicalKeyboardKey.space): onPrimary,
+    key(LogicalKeyboardKey.enter): onPrimary,
+    key(LogicalKeyboardKey.escape): () {
+      final at = phase();
+      if (at == GamePhase.running) {
+        onPause();
+      } else if (at == GamePhase.paused || at == GamePhase.gameOver) {
+        onExitToMenu();
+      }
+    },
+    key(LogicalKeyboardKey.keyP): () {
+      final at = phase();
+      if (at == GamePhase.running || at == GamePhase.paused) onPrimary();
+    },
+    key(LogicalKeyboardKey.keyM): () {
+      if (phase() != GamePhase.ready) onExitToMenu();
+    },
+    key(LogicalKeyboardKey.keyQ): () {
+      if (phase() != GamePhase.ready) onExitToMenu();
+    },
+  };
+}
