@@ -14,6 +14,11 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   points, counted on the end screen.
 - Beating your own best is announced the moment it happens, instead of only
   at game over.
+- A second chance, once per run, in Adventure and Endless: take it within three
+  seconds of dying and the run carries on with your score, apples and level
+  intact — at the cost of half your snake, your combo, and a "REVIVED" mark on
+  the card and the share image. Not offered on the daily or a friend's code,
+  where everyone has to have played the same game.
 - The game-over screen now tells you where you stand: a bar showing this run
   against your best and how far short it fell, your place on the board and the
   points to the person above you, an XP bar that fills from where you were, and

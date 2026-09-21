@@ -95,5 +95,8 @@ String _subtitle({
     return 'DAILY #$dailyDayNumber  ·  STREAK ${dailyState.currentStreak}';
   }
   if (challenge != null) return '${engine.mode.label}  ·  ${challenge.text}';
-  return engine.mode.label;
+  // A run that was brought back says so, next to the score it kept.
+  return engine.revived
+      ? '${engine.mode.label}  ·  REVIVED'
+      : engine.mode.label;
 }

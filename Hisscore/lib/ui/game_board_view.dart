@@ -5,6 +5,7 @@ import 'board.dart';
 import 'floating_label.dart';
 import 'particles.dart';
 import 'screen_shake.dart';
+import 'second_chance.dart';
 import 'theme.dart';
 
 /// The playfield and everything drawn on top of it: the shake, the
@@ -28,6 +29,7 @@ class GameBoardView extends StatelessWidget {
     required this.deathFlashOpacity,
     required this.onSwipe,
     this.overlay,
+    this.countdown = 0,
   });
 
   final SnakeEngine engine;
@@ -42,6 +44,9 @@ class GameBoardView extends StatelessWidget {
 
   /// The pause or game-over card, when one is showing.
   final Widget? overlay;
+
+  /// Seconds left of the 3-2-1 after a second chance; 0 for none.
+  final int countdown;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +71,7 @@ class GameBoardView extends StatelessWidget {
             for (final label in labels)
               FloatingLabelView(key: ValueKey(label.id), label: label),
             ?overlay,
+            if (countdown > 0) ResumeCountdown(seconds: countdown),
             if (deathFlashOpacity > 0) _buildDeathFlash(),
           ],
         );

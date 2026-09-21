@@ -202,6 +202,13 @@ class _GamePageState extends State<GamePage>
 
   void _onTurn(Direction direction) => session.turn(direction);
 
+  /// The run comes back, so the wreckage of the death goes with it.
+  void _takeSecondChance() {
+    effects.clear();
+    session.acceptSecondChance();
+    focusNode.requestFocus();
+  }
+
   /// Leaves the intro for the full-screen game.
   void _enterGame() {
     demo.stop();
@@ -563,8 +570,13 @@ class _GamePageState extends State<GamePage>
               onShare: _shareScore,
               onExitToMenu: _returnToIntro,
               onResume: _onPrimary,
+              onSecondChance: session.offerSecondChance
+                  ? _takeSecondChance
+                  : null,
+              onSecondChanceExpired: session.refuseSecondChance,
             )
           : null,
+      countdown: session.resumeCountdown,
     );
   }
 }

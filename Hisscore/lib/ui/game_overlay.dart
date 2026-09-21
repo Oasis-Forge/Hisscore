@@ -6,6 +6,7 @@ import '../game/run_standing.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
 import 'end_of_run.dart';
+import 'second_chance.dart';
 import 'theme.dart';
 import 'unlocks.dart';
 
@@ -29,6 +30,8 @@ class GameOverlay extends StatelessWidget {
     this.highScore = 0,
     this.standing,
     this.quests = const [],
+    this.onSecondChance,
+    this.onSecondChanceExpired,
   });
 
   final GamePhase phase;
@@ -57,6 +60,11 @@ class GameOverlay extends StatelessWidget {
   /// Today's quests, so the ones this run moved can tick up.
   final List<Quest> quests;
 
+  /// Set when this run could still be brought back. Null means the
+  /// offer does not apply, and the card is the plain end of a run.
+  final VoidCallback? onSecondChance;
+  final VoidCallback? onSecondChanceExpired;
+
   @override
   Widget build(BuildContext context) {
     final isOver = phase == GamePhase.gameOver;
@@ -75,6 +83,15 @@ class GameOverlay extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: RetroText.pixel(size: 16, color: RetroColors.amber),
                 ),
+                // Above everything else it is competing with, because
+                // it is the only thing here with a clock on it.
+                if (isOver && onSecondChance != null) ...[
+                  const SizedBox(height: 16),
+                  SecondChanceOffer(
+                    onAccept: onSecondChance!,
+                    onExpire: onSecondChanceExpired ?? () {},
+                  ),
+                ],
                 if (isOver) ...[
                   const SizedBox(height: 14),
                   Text(
@@ -84,6 +101,10 @@ class GameOverlay extends StatelessWidget {
                       color: RetroColors.phosphor,
                     ),
                   ),
+                  if (engine.revived) ...[
+                    const SizedBox(height: 6),
+                    const RevivedMark(),
+                  ],
                   const SizedBox(height: 10),
                   ScoreBreakdown(engine: engine),
                   // Everything below is the answer to "was that any

@@ -220,6 +220,28 @@ class SnakeEngine {
   /// A scrape was survived on this tick. One tick long, like [justAte].
   bool justSurvivedCloseCall = false;
 
+  // ─── Second chance ────────────────────────────────
+
+  /// Modes a second chance belongs in: the long, exploratory ones.
+  /// Classic is the pure ruleset and stays pure, Hardcore sells being
+  /// unforgiving, and Zen cannot die in the first place.
+  static const reviveModes = {GameMode.adventure, GameMode.endless};
+
+  /// How far from the head obstacles are swept when a run is revived,
+  /// so the snake does not come back inside a wall it cannot escape.
+  static const int reviveClearRadius = 3;
+
+  /// This run has already been brought back once. Never cleared except
+  /// by [reset] — one per run is the whole bargain.
+  bool revived = false;
+
+  /// Whether this run could be brought back right now.
+  bool get canRevive =>
+      !revived &&
+      !won &&
+      phase == GamePhase.gameOver &&
+      reviveModes.contains(mode);
+
   // ─── Tick tracking ────────────────────────────────
 
   int totalTicks = 0;
@@ -289,6 +311,7 @@ class SnakeEngine {
     graceHeld = false;
     closeCalls = 0;
     justSurvivedCloseCall = false;
+    revived = false;
 
     // Level
     level = 1;
@@ -457,6 +480,85 @@ class SnakeEngine {
       justSurvivedCloseCall = true;
       score += (closeCallPoints * scoreMultiplier).round();
     }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Second chance
+  // ═══════════════════════════════════════════════════
+
+  /// Brings a finished run back, once, leaving it paused at the brink
+  /// it died on.
+  ///
+  /// What survives is what the player earned: the score, the apples,
+  /// the level, the clock. What is taken is the position they had
+  /// built — the snake is halved, the combo is dropped, and the
+  /// obstacles crowding the head are swept so the snake does not come
+  /// back inside a wall it cannot escape.
+  ///
+  /// The phase is left [GamePhase.paused] rather than running, because
+  /// dropping a player straight back into a moving game is how you
+  /// turn a rescue into a second death. Whoever called this counts
+  /// them back in.
+  void revive() {
+    if (!canRevive) return;
+    revived = true;
+
+    final keep = max(3, snake.length ~/ 2);
+    snake = snake.sublist(0, min(keep, snake.length));
+    previousSnake = List.of(snake);
+
+    obstacles = {
+      for (final o in obstacles)
+        if (_chebyshev(o, head) > reviveClearRadius) o,
+    };
+
+    comboCount = 0;
+    lastEatMs = -comboWindowMs - 1;
+    inputQueue.clear();
+    graceSpent = false;
+    graceHeld = false;
+    justSurvivedCloseCall = false;
+
+    // The heading that killed the snake will kill it again on the very
+    // first tick, so it is turned to whichever way is actually open.
+    direction = _openDirection();
+
+    _ensurePrimaryApple();
+    phase = GamePhase.paused;
+  }
+
+  static int _chebyshev(GridPoint a, GridPoint b) {
+    final dx = (a.x - b.x).abs();
+    final dy = (a.y - b.y).abs();
+    return dx > dy ? dx : dy;
+  }
+
+  /// The current heading if it is survivable, otherwise a turn that is
+  /// — and the current one again if the snake is boxed in, which is
+  /// the player's problem to solve in the second they are given.
+  Direction _openDirection() {
+    final candidates = [
+      direction,
+      for (final d in Direction.values)
+        if (d != direction && d != direction.opposite) d,
+    ];
+    for (final d in candidates) {
+      if (_survivable(d)) return d;
+    }
+    return direction;
+  }
+
+  bool _survivable(Direction d) {
+    var next = head + d.delta;
+    final outside =
+        next.x < 0 || next.y < 0 || next.x >= columns || next.y >= rows;
+    if (outside) {
+      if (!wrapEnabled) return false;
+      next = _wrap(next);
+    }
+    if (obstacles.contains(next)) return false;
+    // The tail vacates as the snake moves, so the last segment is free.
+    return !snake.sublist(0, snake.length - 1).contains(next);
   }
 
   /// The move the snake was about to make would have killed it.

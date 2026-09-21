@@ -161,6 +161,78 @@ class GameSession extends ChangeNotifier {
   /// on the leaderboard or count toward the high score.
   bool get countsForLeaderboard => engine.mode != GameMode.zen;
 
+  // ─── Second chance ────────────────────────────────
+
+  /// The offer lapsed, or the player waved it away.
+  bool secondChanceRefused = false;
+
+  /// Counting the player back in after a revive: 3, 2, 1, then 0 for
+  /// not counting.
+  int resumeCountdown = 0;
+  Timer? _resumeTimer;
+
+  /// Whether the card should be offering a second chance.
+  ///
+  /// The engine rules out the modes; this rules out the runs whose
+  /// whole point is that everyone played the same game. Reviving on a
+  /// daily or a friend's code would put a score next to other people's
+  /// that was not earned the same way.
+  bool get offerSecondChance =>
+      engine.canRevive &&
+      !secondChanceRefused &&
+      !isDailyRun &&
+      challenge == null;
+
+  /// Takes the second chance: the engine brings the run back paused,
+  /// and the player is counted in rather than dropped into a moving
+  /// game.
+  void acceptSecondChance() {
+    if (!offerSecondChance) return;
+    engine.revive();
+    resumeCountdown = 3;
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      resumeCountdown--;
+      if (resumeCountdown <= 0) {
+        timer.cancel();
+        _resumeTimer = null;
+        resumeCountdown = 0;
+        engine.start();
+        armTicker();
+      }
+      _notify();
+    });
+    _notify();
+  }
+
+  /// The offer lapsed or was turned down: now the run is really over,
+  /// so now it gets written down.
+  void refuseSecondChance() {
+    if (secondChanceRefused) return;
+    secondChanceRefused = true;
+    _recordRunIfNeeded();
+    _notify();
+  }
+
+  /// A finished run is saved exactly once, whenever it becomes final —
+  /// which is at the death for most runs, and only after the offer
+  /// lapses for one that could still have come back.
+  bool _runRecorded = false;
+
+  void _recordRunIfNeeded() {
+    if (_runRecorded || engine.phase != GamePhase.gameOver) return;
+    _runRecorded = true;
+    saveInFlight = persistGameEnd();
+  }
+
+  void _resetRunFlags() {
+    _resumeTimer?.cancel();
+    _resumeTimer = null;
+    resumeCountdown = 0;
+    secondChanceRefused = false;
+    _runRecorded = false;
+  }
+
   // ═══════════════════════════════════════════════════
   // Loading
   // ═══════════════════════════════════════════════════
@@ -231,6 +303,9 @@ class GameSession extends ChangeNotifier {
       _notify();
       return;
     }
+    // A finished run being walked away from is still a finished run.
+    _recordRunIfNeeded();
+    _resetRunFlags();
     newHighScore = false;
     outcome = null;
     standing = null;
@@ -250,6 +325,8 @@ class GameSession extends ChangeNotifier {
   /// Starts today's daily challenge: a Classic run seeded from the date,
   /// on the fixed grid, so every device gets the same board all day.
   void startDaily() {
+    _recordRunIfNeeded();
+    _resetRunFlags();
     _ticker?.cancel();
     final seed = DailyChallenge.seedForDay(dailyDayNumber);
     engine = newEngine(
@@ -273,6 +350,8 @@ class GameSession extends ChangeNotifier {
   /// Starts the game a challenge code names: its mode, its seed, and the
   /// daily's fixed grid, so everyone playing the code plays one board.
   void startChallenge(ChallengeCode code) {
+    _recordRunIfNeeded();
+    _resetRunFlags();
     _ticker?.cancel();
     engine = newEngine(
       mode: code.mode,
@@ -294,6 +373,8 @@ class GameSession extends ChangeNotifier {
 
   /// Back to a clean ready state for the menu.
   void returnToMenu() {
+    _recordRunIfNeeded();
+    _resetRunFlags();
     _ticker?.cancel();
     engine = newEngine();
     engine.reset();
@@ -388,7 +469,9 @@ class GameSession extends ChangeNotifier {
       unawaited(sound.playGameOver());
       haptics.death();
       onGameOver?.call();
-      saveInFlight = persistGameEnd();
+      // A run that could still come back has not finished, so nothing
+      // is written down until the offer lapses.
+      if (!offerSecondChance) _recordRunIfNeeded();
     }
 
     _notify();
@@ -556,6 +639,7 @@ class GameSession extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _ticker?.cancel();
+    _resumeTimer?.cancel();
     _onlineListenable?.removeListener(_onOnlineChanged);
     unawaited(sound.dispose());
     super.dispose();
