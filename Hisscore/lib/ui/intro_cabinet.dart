@@ -98,16 +98,19 @@ class IntroCabinet extends StatelessWidget {
         const SizedBox(width: 10),
         _ToggleIcon(
           icon: soundEnabled ? Icons.volume_up : Icons.volume_off,
+          label: soundEnabled ? 'Sound on' : 'Sound off',
           onTap: onToggleSound,
         ),
         const SizedBox(width: 8),
         _ToggleIcon(
           icon: musicEnabled ? Icons.music_note : Icons.music_off,
+          label: musicEnabled ? 'Music on' : 'Music off',
           onTap: onToggleMusic,
         ),
         const SizedBox(width: 8),
         _ToggleIcon(
           icon: hapticsEnabled ? Icons.vibration : Icons.smartphone,
+          label: hapticsEnabled ? 'Vibration on' : 'Vibration off',
           onTap: onToggleHaptics,
         ),
       ],
@@ -116,16 +119,36 @@ class IntroCabinet extends StatelessWidget {
 }
 
 class _ToggleIcon extends StatelessWidget {
-  const _ToggleIcon({required this.icon, required this.onTap});
+  const _ToggleIcon({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
+
+  /// What the switch is and what state it is in. Without it the row
+  /// reads as three unnamed dots to a screen reader — and to anyone
+  /// driving the app by its accessibility tree.
+  final String label;
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Icon(icon, size: 12, color: RetroColors.phosphorDim),
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        // The icons are 12px in a row of text; the touch target must
+        // not be.
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 12, color: RetroColors.phosphorDim),
+        ),
+      ),
     );
   }
 }

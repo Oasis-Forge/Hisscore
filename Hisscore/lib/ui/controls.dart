@@ -344,15 +344,21 @@ class FoodLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (detailed) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final type in FoodType.values)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: _LegendRow(type: type, detailed: true),
-            ),
-        ],
+      // One left edge for the whole block, or every row centres itself
+      // and the dots and names come out ragged. IntrinsicWidth sizes
+      // the column to its widest row and the rows align inside it.
+      return IntrinsicWidth(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final type in FoodType.values)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: _LegendRow(type: type, detailed: true),
+              ),
+          ],
+        ),
       );
     }
     return Wrap(
@@ -386,7 +392,9 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 5),
         if (detailed)
           SizedBox(
-            width: 58,
+            // Wide enough for MAGNET plus a gap, so the effects line up
+            // in their own column rather than butting against the name.
+            width: 68,
             child: Text(
               type.label,
               style: RetroText.pixel(size: 7, color: FoodLegend.colorFor(type)),
