@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/food_types.dart';
+import '../game/haptics.dart';
 import '../game/snake_engine.dart';
 import 'theme.dart';
 
@@ -61,7 +62,7 @@ class _ArcadeActionButtonState extends State<ArcadeActionButton>
               behavior: HitTestBehavior.opaque,
               onTapDown: (_) {
                 _press.forward();
-                HapticFeedback.mediumImpact();
+                Haptics.instance.tap();
                 widget.onPressed();
               },
               onTapUp: (_) => _press.reverse(),
@@ -155,7 +156,7 @@ class SecondaryArcadeButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            HapticFeedback.lightImpact();
+            Haptics.instance.tap();
             onPressed();
           },
           child: Container(

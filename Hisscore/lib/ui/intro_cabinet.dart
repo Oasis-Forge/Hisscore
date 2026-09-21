@@ -17,8 +17,10 @@ class IntroCabinet extends StatelessWidget {
     required this.subtitleColor,
     required this.soundEnabled,
     required this.musicEnabled,
+    required this.hapticsEnabled,
     required this.onToggleSound,
     required this.onToggleMusic,
+    required this.onToggleHaptics,
     required this.screen,
     required this.onPlay,
   });
@@ -32,8 +34,10 @@ class IntroCabinet extends StatelessWidget {
 
   final bool soundEnabled;
   final bool musicEnabled;
+  final bool hapticsEnabled;
   final VoidCallback onToggleSound;
   final VoidCallback onToggleMusic;
+  final VoidCallback onToggleHaptics;
 
   /// What plays inside the cabinet's screen.
   final Widget screen;
@@ -100,6 +104,11 @@ class IntroCabinet extends StatelessWidget {
         _ToggleIcon(
           icon: musicEnabled ? Icons.music_note : Icons.music_off,
           onTap: onToggleMusic,
+        ),
+        const SizedBox(width: 8),
+        _ToggleIcon(
+          icon: hapticsEnabled ? Icons.vibration : Icons.smartphone,
+          onTap: onToggleHaptics,
         ),
       ],
     );

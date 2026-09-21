@@ -14,6 +14,10 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   points, counted on the end screen.
 - Beating your own best is announced the moment it happens, instead of only
   at game over.
+- The game now buzzes where it should: a tap on an apple, a click on a pickup
+  or a close call, a stronger pulse on each combo step, two on a level-up and a
+  heavy one on death. There is a vibration switch on the menu next to the sound
+  and music ones, and turning it off silences the buttons too.
 - First-time players get a moving SWIPE TO STEER hint on the menu, over the demo
   snake, until they have finished a run.
 - Pausing now shows what every pickup does, not just its name — no more guessing

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'challenge_code.dart';
 import 'daily_challenge.dart';
 import 'food_types.dart';
+import 'haptics.dart';
 import 'high_score_store.dart';
 import 'notification_service.dart';
 import 'online_scores.dart';
@@ -33,10 +34,12 @@ class GameSession extends ChangeNotifier {
     required this.onlineScores,
     this.engineFactory,
     SoundManager? sound,
+    Haptics? haptics,
     ReviewPrompter? reviewPrompter,
     NotificationService? notifications,
     this.now = DateTime.now,
   }) : sound = sound ?? SoundManager(),
+       haptics = haptics ?? Haptics.instance,
        reviewPrompter = reviewPrompter ?? ReviewPrompter(),
        notifications = notifications ?? NotificationService() {
     engine = engineFactory?.call() ?? SnakeEngine(mode: selectedMode);
@@ -47,6 +50,7 @@ class GameSession extends ChangeNotifier {
   final OnlineScoreBoard onlineScores;
   final SnakeEngine Function()? engineFactory;
   final SoundManager sound;
+  final Haptics haptics;
   final ReviewPrompter reviewPrompter;
   final NotificationService notifications;
 
@@ -343,11 +347,14 @@ class GameSession extends ChangeNotifier {
     final eaten = engine.lastEatenFood;
     if (engine.justAte && eaten != null) {
       unawaited(sound.playPickup(eaten.type));
+      haptics.ate(eaten.type);
+      if (engine.comboCount > 1) haptics.combo();
       onAte?.call(eaten, engine.score - scoreBefore);
     }
 
     if (engine.justSurvivedCloseCall) {
       unawaited(sound.playCloseCall());
+      haptics.closeCall();
       onCloseCall?.call();
     }
 
@@ -361,12 +368,14 @@ class GameSession extends ChangeNotifier {
 
     if (engine.levelJustAdvanced) {
       unawaited(sound.playLevelUp());
+      haptics.levelUp();
       onLevelUp?.call(engine.level);
     }
 
     if (engine.phase == GamePhase.gameOver) {
       _ticker?.cancel();
       unawaited(sound.playGameOver());
+      haptics.death();
       onGameOver?.call();
       saveInFlight = persistGameEnd();
     }

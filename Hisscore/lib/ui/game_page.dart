@@ -133,6 +133,7 @@ class _GamePageState extends State<GamePage>
 
     unawaited(_load());
     unawaited(session.sound.init());
+    unawaited(session.haptics.init());
     unawaited(session.notifications.init());
     demo.start();
   }
@@ -380,6 +381,13 @@ class _GamePageState extends State<GamePage>
                       session.sound.setMusicEnabled(
                         !session.sound.musicEnabled,
                       ),
+                    );
+                    setState(() {});
+                  },
+                  hapticsEnabled: session.haptics.enabled,
+                  onToggleHaptics: () {
+                    unawaited(
+                      session.haptics.setEnabled(!session.haptics.enabled),
                     );
                     setState(() {});
                   },

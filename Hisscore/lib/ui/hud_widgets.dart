@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../game/haptics.dart';
 import 'theme.dart';
 
 // ─── Mini stat chip (level, combo, shield) ──────────
@@ -57,7 +57,7 @@ class PauseButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          HapticFeedback.lightImpact();
+          Haptics.instance.tap();
           onPressed();
         },
         child: Container(
