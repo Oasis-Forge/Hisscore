@@ -162,7 +162,8 @@ void main() {
     await tester.tap(find.text('PLAY'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1300));
-    await tester.pump();
+    // Wait out the slow-motion beat before the card appears.
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('GAME OVER'), findsOneWidget);
     expect(find.text('LEVEL UP! LEVEL 2'), findsOneWidget);

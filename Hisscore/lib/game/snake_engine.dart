@@ -184,6 +184,30 @@ class SnakeEngine {
   /// shields purely cosmetic/score fodder — nothing stops a crash.
   bool get shieldActive => hasShield && mode != GameMode.hardcore;
 
+  // ─── Grace ────────────────────────────────────────
+
+  /// Extra ticks a doomed snake gets before the run ends.
+  ///
+  /// Most deaths that feel unfair are a turn that landed one frame
+  /// late: the player did steer, the tick had already gone. One held
+  /// tick is enough to make those land, and short enough that nobody
+  /// can play off the walls on purpose. Hardcore gets none — being
+  /// unforgiving is the whole of what it sells.
+  int get graceTicks => mode == GameMode.hardcore ? 0 : 1;
+
+  /// Whether the current brush with death has already been forgiven.
+  /// Cleared the moment the snake completes a safe move, so the grace
+  /// is per-scrape rather than per-run.
+  bool graceSpent = false;
+
+  /// This tick was held on the brink instead of moving. Lives for one
+  /// tick, like [justAte], so the UI can react to the moment.
+  bool graceHeld = false;
+
+  /// Whether the snake is frozen one move from dying, waiting to see if
+  /// a turn arrives.
+  bool get onTheBrink => graceHeld;
+
   // ─── Tick tracking ────────────────────────────────
 
   int totalTicks = 0;
@@ -247,6 +271,10 @@ class SnakeEngine {
     hasShield = false;
     speedBurstUntilMs = 0;
     magnetUntilMs = 0;
+
+    // Grace
+    graceSpent = false;
+    graceHeld = false;
 
     // Level
     level = 1;
@@ -312,6 +340,7 @@ class SnakeEngine {
     justAte = false;
     lastEatenFood = null;
     levelJustAdvanced = false;
+    graceHeld = false;
     totalTicks++;
     elapsedMs += tickInterval.inMilliseconds;
     previousSnake = List.of(snake);
@@ -335,7 +364,7 @@ class SnakeEngine {
         hasShield = false;
         next = _wrap(next);
       } else {
-        phase = GamePhase.gameOver;
+        _fatalMove();
         return;
       }
     }
@@ -347,7 +376,7 @@ class SnakeEngine {
       } else if (shieldActive) {
         hasShield = false;
       } else {
-        phase = GamePhase.gameOver;
+        _fatalMove();
         return;
       }
     }
@@ -359,7 +388,7 @@ class SnakeEngine {
     // ── Self-collision ──
     final bodyToCheck = eating ? snake : snake.sublist(0, snake.length - 1);
     if (!isInvulnerable && bodyToCheck.contains(next)) {
-      phase = GamePhase.gameOver;
+      _fatalMove();
       return;
     }
 
@@ -400,6 +429,30 @@ class SnakeEngine {
 
     // Ensure we always have at least one apple.
     _ensurePrimaryApple();
+
+    // The snake got through a whole tick alive, so the next scrape
+    // starts with its grace intact.
+    graceSpent = false;
+  }
+
+  /// The move the snake was about to make would have killed it.
+  ///
+  /// Once per scrape, and never in Hardcore, the snake is held exactly
+  /// where it is for one tick instead — the rest of this tick is
+  /// skipped, so nothing moves, spawns, despawns or decays and the
+  /// board is untouched when the player's late turn lands. A second
+  /// doomed tick with nothing queued is the real thing.
+  ///
+  /// Grace is only offered with an empty input queue: a player who has
+  /// already banked a turn is steering, not scraping, and that turn
+  /// gets applied on the next tick regardless.
+  void _fatalMove() {
+    if (graceTicks > 0 && !graceSpent && inputQueue.isEmpty) {
+      graceSpent = true;
+      graceHeld = true;
+      return;
+    }
+    phase = GamePhase.gameOver;
   }
 
   // ═══════════════════════════════════════════════════

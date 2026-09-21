@@ -26,6 +26,15 @@ class RunEffects extends ChangeNotifier {
   static const deathFlashDuration = Duration(milliseconds: 500);
   static const labelLifetime = Duration(milliseconds: 700);
 
+  /// How long the board is left on screen, in slow motion, before the
+  /// game-over card covers it. The card used to appear on the same
+  /// frame as the death, which threw away the one moment the player
+  /// wants to look at: how they died.
+  static const deathPause = Duration(milliseconds: 400);
+
+  /// How fast the world runs during that pause.
+  static const slowMotionScale = 0.3;
+
   final particles = ParticleSystem();
   final shake = ScreenShakeController();
   final List<FloatingLabel> labels = [];
@@ -34,7 +43,12 @@ class RunEffects extends ChangeNotifier {
   int _labelSeq = 0;
 
   DateTime? _levelFlashAt;
-  DateTime? _deathFlashAt;
+  DateTime? _deathAt;
+  Timer? _deathPauseTimer;
+
+  /// The slow-motion beat between the death and the card. The page
+  /// holds the game-over overlay back while this is true.
+  bool get dying => _deathAt != null && _deathPauseTimer != null;
 
   // ─── Geometry ─────────────────────────────────────
 
@@ -110,7 +124,16 @@ class RunEffects extends ChangeNotifier {
     final cell = cellCentre(head);
     particles.emitDeath(cell.dx, cell.dy, RetroColors.cherry);
     shake.shake(intensity: 8);
-    _deathFlashAt = now();
+    _deathAt = now();
+    _deathPauseTimer?.cancel();
+    particles.timeScale = slowMotionScale;
+    _deathPauseTimer = Timer(deathPause, _endDeathPause);
+  }
+
+  void _endDeathPause() {
+    _deathPauseTimer = null;
+    particles.timeScale = 1.0;
+    notifyListeners();
   }
 
   /// Spawns a floating text popup at a grid position; it rises and
@@ -144,20 +167,43 @@ class RunEffects extends ChangeNotifier {
     _labelTimers.add(timer);
   }
 
-  /// A fresh run starts on a clean screen.
+  /// A fresh run starts on a clean screen, at full speed.
   void clear() {
     particles.clear();
+    particles.timeScale = 1.0;
     _cancelLabelTimers();
     labels.clear();
+    _deathPauseTimer?.cancel();
+    _deathPauseTimer = null;
     _levelFlashAt = null;
-    _deathFlashAt = null;
+    _deathAt = null;
   }
 
   // ─── Fades ────────────────────────────────────────
 
   double get levelFlashOpacity => _fade(_levelFlashAt, levelFlashDuration);
 
-  double get deathFlashOpacity => _fade(_deathFlashAt, deathFlashDuration);
+  /// The red flash runs on death time rather than wall time, so it
+  /// crawls through the slow-motion beat and then finishes at normal
+  /// speed once the card is on its way in.
+  double get deathFlashOpacity {
+    if (_deathAt == null) return 0;
+    final elapsed = deathElapsed.inMilliseconds;
+    final span = deathFlashDuration.inMilliseconds;
+    if (elapsed >= span) return 0;
+    return 1.0 - elapsed / span;
+  }
+
+  /// Time since the death as the effects experience it: slowed for the
+  /// length of [deathPause], normal speed after. Continuous at the
+  /// hand-over, so nothing jumps when the world speeds back up.
+  Duration get deathElapsed {
+    final at = _deathAt;
+    if (at == null) return Duration.zero;
+    final real = now().difference(at);
+    if (real <= deathPause) return real * slowMotionScale;
+    return deathPause * slowMotionScale + (real - deathPause);
+  }
 
   double _fade(DateTime? at, Duration total) {
     if (at == null) return 0;
@@ -186,6 +232,7 @@ class RunEffects extends ChangeNotifier {
   @override
   void dispose() {
     _cancelLabelTimers();
+    _deathPauseTimer?.cancel();
     shake.dispose();
     super.dispose();
   }

@@ -520,8 +520,12 @@ class _GamePageState extends State<GamePage>
   }
 
   Widget _buildBoardLayers() {
+    // The card waits out the slow-motion beat: covering the board on
+    // the same frame as the death hides the one thing the player wants
+    // to see.
     final showOverlay =
-        engine.phase == GamePhase.paused || engine.phase == GamePhase.gameOver;
+        engine.phase == GamePhase.paused ||
+        (engine.phase == GamePhase.gameOver && !effects.dying);
     return GameBoardView(
       engine: engine,
       pulse: pulse,

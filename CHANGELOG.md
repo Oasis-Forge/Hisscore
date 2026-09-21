@@ -5,6 +5,11 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- Deaths are fairer. A turn that lands a frame too late now still counts: the
+  snake freezes for one tick on the brink instead of dying outright, so the
+  input you swear you made actually saves you. Hardcore is untouched.
+- Dying now plays out in slow motion for a moment before the game-over card
+  appears, so you can see what actually killed you.
 - First-time players get a moving SWIPE TO STEER hint on the menu, over the demo
   snake, until they have finished a run.
 - Pausing now shows what every pickup does, not just its name — no more guessing

@@ -78,7 +78,8 @@ void main() {
     await tester.tap(find.text('PLAY'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1300));
-    await tester.pump();
+    // Wait out the slow-motion beat before the card appears.
+    await tester.pump(const Duration(milliseconds: 500));
 
     // One apple (10 points): 1 XP for the apple, 0 for the score.
     expect(find.text('GAME OVER'), findsOneWidget);
@@ -98,7 +99,8 @@ void main() {
     await tester.tap(find.text('PLAY'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1300));
-    await tester.pump();
+    // Wait out the slow-motion beat before the card appears.
+    await tester.pump(const Duration(milliseconds: 500));
 
     // The run ate one apple for 10 points and no power-ups.
     final saved = await store.loadProgress();

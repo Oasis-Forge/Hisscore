@@ -41,6 +41,11 @@ class ParticleSystem {
   final List<Particle> _particles = [];
   DateTime _lastUpdate = DateTime.now();
 
+  /// How fast the simulation runs against the wall clock. Dropped below
+  /// 1 for the slow-motion beat after a death, so the burst blooms
+  /// instead of being over before it is seen.
+  double timeScale = 1.0;
+
   bool get hasParticles => _particles.isNotEmpty;
   int get count => _particles.length;
 
@@ -135,8 +140,8 @@ class ParticleSystem {
     final dt = now.difference(_lastUpdate).inMicroseconds / 1000000.0;
     _lastUpdate = now;
 
-    // Cap dt to avoid huge jumps after pauses.
-    final clampedDt = dt.clamp(0.0, 0.05);
+    // Cap dt to avoid huge jumps after pauses, then bend the clock.
+    final clampedDt = dt.clamp(0.0, 0.05) * timeScale;
 
     for (final p in _particles) {
       p.x += p.vx * clampedDt;
