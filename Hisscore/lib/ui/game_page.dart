@@ -23,6 +23,7 @@ import 'ready_tabs.dart';
 import 'run_effects.dart';
 import 'share_run.dart';
 import 'snake_skin.dart';
+import 'swipe_hint.dart';
 import 'theme.dart';
 
 /// The whole game, on one page: the arcade-cabinet menu and the
@@ -441,6 +442,7 @@ class _GamePageState extends State<GamePage>
               selectedSkin: SnakeSkin.current,
               onSkinChanged: _setSkin,
             ),
+            if (session.isFirstTimePlayer) SwipeHint(sweep: pulse.value),
           ],
         );
       },

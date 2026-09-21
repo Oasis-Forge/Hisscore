@@ -33,6 +33,19 @@ enum FoodType {
     FoodType.shrink => 'SHRINK',
     FoodType.magnet => 'MAGNET',
   };
+
+  /// What eating it actually does, in the fewest words that still say
+  /// it. A coloured dot and a name told nobody what SHRINK or MAGNET
+  /// were for, and a pickup the player cannot read is a pickup they
+  /// avoid.
+  String get effect => switch (this) {
+    FoodType.apple => 'GROW  ·  +10',
+    FoodType.star => 'NO GROWTH  ·  +50',
+    FoodType.shield => 'SURVIVE ONE HIT',
+    FoodType.speedBurst => 'DOUBLE SPEED, BRIEFLY',
+    FoodType.shrink => 'LOSE 2 SEGMENTS',
+    FoodType.magnet => 'DRAGS FOOD TO YOU',
+  };
 }
 
 /// A single collectible item on the game board.

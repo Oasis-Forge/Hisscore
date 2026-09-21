@@ -4,6 +4,12 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 
 ## [Unreleased]
 
+### Added
+- First-time players get a moving SWIPE TO STEER hint on the menu, over the demo
+  snake, until they have finished a run.
+- Pausing now shows what every pickup does, not just its name — no more guessing
+  what SHRINK or MAGNET are for. The HOW tab spells them out too.
+
 ## [1.0.1] - 2026-09-20
 
 ### Fixed

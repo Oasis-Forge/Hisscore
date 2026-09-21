@@ -107,6 +107,21 @@ class GameOverlay extends StatelessWidget {
                     onPressed: onShare,
                   ),
                 ],
+                // Paused is the only moment a player has both the time
+                // to read and a reason to care what a pickup does, so
+                // the legend lives here rather than behind a menu tab.
+                if (!isOver) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    'PICKUPS',
+                    style: RetroText.pixel(
+                      size: 8,
+                      color: RetroColors.amberDim,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const FoodLegend(detailed: true),
+                ],
                 const SizedBox(height: 22),
                 ArcadeActionButton(
                   label: isOver ? 'PLAY AGAIN' : 'RESUME',

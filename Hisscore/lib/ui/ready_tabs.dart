@@ -173,7 +173,7 @@ class ReadyHowTab extends StatelessWidget {
           style: RetroText.pixel(size: 9, color: RetroColors.amberDim),
         ),
         const SizedBox(height: 10),
-        const FoodLegend(),
+        const FoodLegend(detailed: true),
         const SizedBox(height: 18),
         Text(
           'CONTROLS',

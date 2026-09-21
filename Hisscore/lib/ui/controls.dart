@@ -322,39 +322,84 @@ class _ModeChip extends StatelessWidget {
 /// Small key showing what each collectible on the board does, so a
 /// first-time player isn't guessing what the colored shapes mean.
 class FoodLegend extends StatelessWidget {
-  const FoodLegend({super.key});
+  const FoodLegend({super.key, this.detailed = false});
 
-  static List<(FoodType, Color)> get _entries => [
-    (FoodType.apple, RetroColors.food),
-    (FoodType.star, RetroColors.starGold),
-    (FoodType.shield, RetroColors.shieldCyan),
-    (FoodType.speedBurst, RetroColors.speedYellow),
-    (FoodType.shrink, RetroColors.shrinkPurple),
-    (FoodType.magnet, RetroColors.magnetPink),
-  ];
+  /// Whether each pickup also says what it does. The compact form is a
+  /// reminder for someone who already knows; the detailed one is the
+  /// only place the rules are actually written down.
+  final bool detailed;
+
+  /// Read live rather than held in a const map: the palette swaps with
+  /// the chosen theme, so a cached colour would go stale.
+  static Color colorFor(FoodType type) => switch (type) {
+    FoodType.apple => RetroColors.food,
+    FoodType.star => RetroColors.starGold,
+    FoodType.shield => RetroColors.shieldCyan,
+    FoodType.speedBurst => RetroColors.speedYellow,
+    FoodType.shrink => RetroColors.shrinkPurple,
+    FoodType.magnet => RetroColors.magnetPink,
+  };
 
   @override
   Widget build(BuildContext context) {
+    if (detailed) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final type in FoodType.values)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: _LegendRow(type: type, detailed: true),
+            ),
+        ],
+      );
+    }
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 10,
       runSpacing: 4,
+      children: [for (final type in FoodType.values) _LegendRow(type: type)],
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({required this.type, this.detailed = false});
+
+  final FoodType type;
+  final bool detailed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final (type, color) in _entries)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                type.label,
-                style: RetroText.pixel(size: 7, color: RetroColors.metal),
-              ),
-            ],
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: FoodLegend.colorFor(type),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        if (detailed)
+          SizedBox(
+            width: 58,
+            child: Text(
+              type.label,
+              style: RetroText.pixel(size: 7, color: FoodLegend.colorFor(type)),
+            ),
+          )
+        else
+          Text(
+            type.label,
+            style: RetroText.pixel(size: 7, color: RetroColors.metal),
+          ),
+        if (detailed)
+          Text(
+            type.effect,
+            style: RetroText.pixel(size: 7, color: RetroColors.metal),
           ),
       ],
     );

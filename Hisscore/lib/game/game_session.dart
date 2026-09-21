@@ -78,6 +78,11 @@ class GameSession extends ChangeNotifier {
   /// measured itself. Null until then, and the engine's default wins.
   GridSize Function()? gridProvider;
 
+  /// Whether [load] has come back. Before it does, everything below is
+  /// a default rather than the player's own, which matters for anything
+  /// that keys off "has this player played before".
+  bool loaded = false;
+
   int highScore = 0;
   bool newHighScore = false;
   List<ScoreEntry> topScores = [];
@@ -152,8 +157,14 @@ class GameSession extends ChangeNotifier {
     savedSkinId = await store.loadSkinId();
     playerName = await store.loadPlayerName();
     progress = await store.loadProgress();
+    loaded = true;
     _notify();
   }
+
+  /// Nobody has finished a run on this device yet, so the game should
+  /// explain itself. False until [load] answers, so a returning player
+  /// never sees the onboarding flash past.
+  bool get isFirstTimePlayer => loaded && stats.gamesPlayed == 0;
 
   /// The boards, if they can change under us (the real one connects in the
   /// background); the no-op and test boards never change.
