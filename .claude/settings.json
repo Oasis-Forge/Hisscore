@@ -14,6 +14,7 @@
       "Bash(gh run list*)",
       "Bash(gh run view*)",
       "Bash(bash scripts/version.sh*)",
+      "PowerShell(bash scripts/version.sh*)",
       "PowerShell(flutter analyze*)",
       "PowerShell(flutter test*)",
       "PowerShell(flutter pub get*)",
@@ -29,8 +30,6 @@
     ],
     "deny": [
       "Read(./build/**)",
-      "Read(./dist/**)",
-      "Read(./Hisscore/dist/**)",
       "Read(./coverage/**)",
       "Read(./.dart_tool/**)",
       "Read(./ios/Flutter/ephemeral/**)",

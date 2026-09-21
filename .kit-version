@@ -2,7 +2,7 @@
 # `new-app.ps1 -Name <this folder> -Update` re-copies the kit files that
 # changed since, so a kit fix reaches a project that was already built.
 kit    = https://github.com/Oasis-Forge/app-starter-kit.git
-commit = e760ee5181351654a37539d34f1c24a0fb5222a6
+commit = ba6741956ad87b4a5ef9ee124bc9583180a98b5b
 stack  = flutter
 files:
   .claude/agents/build-doctor.md

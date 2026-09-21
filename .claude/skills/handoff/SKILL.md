@@ -1,18 +1,28 @@
 ---
 name: handoff
-description: Save where work stopped into the session-handoff memory, so the next session can resume from files after the chat is cleared. Use at the end of a session, before clearing the chat, or when the user says "handoff".
+description: Rewrite the session-handoff memory as a short note (where work stopped, the next step, what waits on the user) so the next session resumes cheaply. Use at the end of a session, after a PR merges, or before compacting.
 ---
 
-Update the `session-handoff` memory file in this project's memory directory; don't create a second one. If it's missing, create it (type `project`) and add its line to `MEMORY.md`.
+This stays in the main session: only it knows what happened.
 
-Write the current state at the top, in at most 25 lines:
-- **Branch and PR state:** what's open and merged, the version, and what the user still has to do (merge, test by hand, add secrets).
-- **Shape of the current work:** key files, and any design choice someone might "simplify" back, with "don't" and why.
-- **Decisions the user made**, dated.
-- **Driven by hand vs only compiled**, and anything left changed on a device.
-- **Known and not fixed.**
-- **Next:** the next item and its first step. Front-load anything only a device or CI can prove.
+Replace the whole `session-handoff` memory file in the memory directory (don't append to it) with this form, at most 25 lines:
 
-Condense older entries to one line each. Drop what `git log`, `docs/ROADMAP.md`, or `CLAUDE.md` already record. A lesson that applies to every session goes in its own `feedback` memory, not here. Use absolute dates.
+```markdown
+---
+name: session-handoff
+description: where work stopped on YYYY-MM-DD; read on "resume"
+metadata:
+  type: project
+---
 
-End the file with: **How to apply:** on "resume", run `gh pr list` and `git log --oneline -3` first. A green open PR is waiting for the user, so don't merge it. Otherwise take the next unticked item in `docs/ROADMAP.md` from a freshly pulled `main`.
+**Stopped:** date; branch and its state (PR number, CI, merged or waiting on the user).
+**Next:** the one next step, specific enough to start without asking.
+**Waiting on the user:** questions or approvals asked and not answered yet.
+**Loose ends:** anything left on disk, on a device, or on GitHub.
+```
+
+Leave out:
+- Anything git log, `CHANGELOG.md`, or `docs/ROADMAP.md` already records, and anything finished.
+- How-tos and lessons. A lesson worth keeping goes into its own feedback memory (update the one that already covers it) and gets a `[[link]]` here, not a paragraph.
+
+Then update the date in its `MEMORY.md` line.
