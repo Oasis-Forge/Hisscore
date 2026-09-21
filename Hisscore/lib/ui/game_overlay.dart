@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
 import '../game/quests.dart';
+import '../game/run_standing.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
+import 'end_of_run.dart';
+import 'second_chance.dart';
 import 'theme.dart';
 import 'unlocks.dart';
 
@@ -24,6 +27,11 @@ class GameOverlay extends StatelessWidget {
     required this.onShare,
     required this.onResume,
     required this.onExitToMenu,
+    this.highScore = 0,
+    this.standing,
+    this.quests = const [],
+    this.onSecondChance,
+    this.onSecondChanceExpired,
   });
 
   final GamePhase phase;
@@ -43,6 +51,20 @@ class GameOverlay extends StatelessWidget {
   final VoidCallback onResume;
   final VoidCallback onExitToMenu;
 
+  /// The best on this device, for the bar the run is measured against.
+  final int highScore;
+
+  /// Where the run landed on a board, when one answered.
+  final RunStanding? standing;
+
+  /// Today's quests, so the ones this run moved can tick up.
+  final List<Quest> quests;
+
+  /// Set when this run could still be brought back. Null means the
+  /// offer does not apply, and the card is the plain end of a run.
+  final VoidCallback? onSecondChance;
+  final VoidCallback? onSecondChanceExpired;
+
   @override
   Widget build(BuildContext context) {
     final isOver = phase == GamePhase.gameOver;
@@ -61,6 +83,15 @@ class GameOverlay extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: RetroText.pixel(size: 16, color: RetroColors.amber),
                 ),
+                // Above everything else it is competing with, because
+                // it is the only thing here with a clock on it.
+                if (isOver && onSecondChance != null) ...[
+                  const SizedBox(height: 16),
+                  SecondChanceOffer(
+                    onAccept: onSecondChance!,
+                    onExpire: onSecondChanceExpired ?? () {},
+                  ),
+                ],
                 if (isOver) ...[
                   const SizedBox(height: 14),
                   Text(
@@ -70,8 +101,23 @@ class GameOverlay extends StatelessWidget {
                       color: RetroColors.phosphor,
                     ),
                   ),
+                  if (engine.revived) ...[
+                    const SizedBox(height: 6),
+                    const RevivedMark(),
+                  ],
                   const SizedBox(height: 10),
                   ScoreBreakdown(engine: engine),
+                  // Everything below is the answer to "was that any
+                  // good, and what would be better" — the question the
+                  // player is actually asking at this moment.
+                  if (highScore > 0) ...[
+                    const SizedBox(height: 14),
+                    ScoreVsBest(score: engine.score, best: highScore),
+                  ],
+                  if (standing != null) ...[
+                    const SizedBox(height: 12),
+                    BoardStanding(standing: standing!),
+                  ],
                   if (isDailyRun) ...[
                     const SizedBox(height: 10),
                     Text(
@@ -90,6 +136,9 @@ class GameOverlay extends StatelessWidget {
                     ),
                   ],
                   if (outcome != null) ...[
+                    const SizedBox(height: 14),
+                    XpBar(outcome: outcome!),
+                    QuestProgressList(outcome: outcome!, quests: quests),
                     const SizedBox(height: 10),
                     _ProgressLines(outcome: outcome!),
                   ],
@@ -106,6 +155,21 @@ class GameOverlay extends StatelessWidget {
                     color: RetroColors.zenBlue,
                     onPressed: onShare,
                   ),
+                ],
+                // Paused is the only moment a player has both the time
+                // to read and a reason to care what a pickup does, so
+                // the legend lives here rather than behind a menu tab.
+                if (!isOver) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    'PICKUPS',
+                    style: RetroText.pixel(
+                      size: 8,
+                      color: RetroColors.amberDim,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const FoodLegend(detailed: true),
                 ],
                 const SizedBox(height: 22),
                 ArcadeActionButton(
@@ -145,6 +209,8 @@ class ScoreBreakdown extends StatelessWidget {
           'BEST COMBO',
           '×${(1.0 + (engine.bestCombo - 1) * 0.5).toStringAsFixed(1)}',
         ),
+      if (engine.closeCalls > 0)
+        BreakdownItem('CLOSE CALLS', engine.closeCalls.toString()),
     ];
 
     return Row(

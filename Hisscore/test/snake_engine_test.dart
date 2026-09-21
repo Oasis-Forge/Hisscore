@@ -97,6 +97,10 @@ void main() {
     game.tick();
     game.queueTurn(Direction.down);
     game.tick();
+    // Held on the brink by the grace tick, then nothing was steered.
+    expect(game.phase, GamePhase.running);
+    expect(game.graceHeld, isTrue);
+    game.tick();
     expect(game.phase, GamePhase.gameOver);
   });
 
@@ -177,7 +181,9 @@ void main() {
     // Head is at (2,2), move right → 3, 4, then wall.
     game.tick(); // (3,2)
     game.tick(); // (4,2)
-    game.tick(); // wall
+    game.tick(); // wall — held by the grace tick
+    expect(game.phase, GamePhase.running);
+    game.tick(); // nothing steered, so now it is real
     expect(game.phase, GamePhase.gameOver);
   });
 
@@ -281,6 +287,8 @@ void main() {
     game.start();
     // Place an obstacle right in front of the snake.
     game.obstacles = {GridPoint(game.head.x + 1, game.head.y)};
+    game.tick(); // held by the grace tick
+    expect(game.phase, GamePhase.running);
     game.tick();
     expect(game.phase, GamePhase.gameOver);
   });

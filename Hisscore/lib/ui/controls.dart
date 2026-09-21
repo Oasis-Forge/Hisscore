@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/food_types.dart';
+import '../game/haptics.dart';
 import '../game/snake_engine.dart';
 import 'theme.dart';
 
@@ -61,7 +62,7 @@ class _ArcadeActionButtonState extends State<ArcadeActionButton>
               behavior: HitTestBehavior.opaque,
               onTapDown: (_) {
                 _press.forward();
-                HapticFeedback.mediumImpact();
+                Haptics.instance.tap();
                 widget.onPressed();
               },
               onTapUp: (_) => _press.reverse(),
@@ -155,7 +156,7 @@ class SecondaryArcadeButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            HapticFeedback.lightImpact();
+            Haptics.instance.tap();
             onPressed();
           },
           child: Container(
@@ -322,41 +323,143 @@ class _ModeChip extends StatelessWidget {
 /// Small key showing what each collectible on the board does, so a
 /// first-time player isn't guessing what the colored shapes mean.
 class FoodLegend extends StatelessWidget {
-  const FoodLegend({super.key});
+  const FoodLegend({super.key, this.detailed = false});
 
-  static List<(FoodType, Color)> get _entries => [
-    (FoodType.apple, RetroColors.food),
-    (FoodType.star, RetroColors.starGold),
-    (FoodType.shield, RetroColors.shieldCyan),
-    (FoodType.speedBurst, RetroColors.speedYellow),
-    (FoodType.shrink, RetroColors.shrinkPurple),
-    (FoodType.magnet, RetroColors.magnetPink),
-  ];
+  /// Whether each pickup also says what it does. The compact form is a
+  /// reminder for someone who already knows; the detailed one is the
+  /// only place the rules are actually written down.
+  final bool detailed;
+
+  /// Read live rather than held in a const map: the palette swaps with
+  /// the chosen theme, so a cached colour would go stale.
+  static Color colorFor(FoodType type) => switch (type) {
+    FoodType.apple => RetroColors.food,
+    FoodType.star => RetroColors.starGold,
+    FoodType.shield => RetroColors.shieldCyan,
+    FoodType.speedBurst => RetroColors.speedYellow,
+    FoodType.shrink => RetroColors.shrinkPurple,
+    FoodType.magnet => RetroColors.magnetPink,
+  };
 
   @override
   Widget build(BuildContext context) {
+    if (detailed) {
+      // One left edge for the whole block, or every row centres itself
+      // and the dots and names come out ragged. IntrinsicWidth sizes
+      // the column to its widest row and the rows align inside it.
+      return IntrinsicWidth(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final type in FoodType.values)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: _LegendRow(type: type, detailed: true),
+              ),
+          ],
+        ),
+      );
+    }
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 10,
       runSpacing: 4,
+      children: [for (final type in FoodType.values) _LegendRow(type: type)],
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({required this.type, this.detailed = false});
+
+  final FoodType type;
+  final bool detailed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final (type, color) in _entries)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                type.label,
-                style: RetroText.pixel(size: 7, color: RetroColors.metal),
-              ),
-            ],
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: FoodLegend.colorFor(type),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        if (detailed)
+          SizedBox(
+            // Wide enough for MAGNET plus a gap, so the effects line up
+            // in their own column rather than butting against the name.
+            width: 68,
+            child: Text(
+              type.label,
+              style: RetroText.pixel(size: 7, color: FoodLegend.colorFor(type)),
+            ),
+          )
+        else
+          Text(
+            type.label,
+            style: RetroText.pixel(size: 7, color: RetroColors.metal),
+          ),
+        if (detailed)
+          Text(
+            type.effect,
+            style: RetroText.pixel(size: 7, color: RetroColors.metal),
           ),
       ],
     );
   }
+}
+
+// ─── Keyboard ───────────────────────────────────────
+
+/// Everything the keyboard can do during a game.
+///
+/// Arrows and WASD steer; space and enter are the one primary action
+/// (play, pause, resume); escape pauses a run and leaves a finished
+/// one; P toggles pause; M and Q go back to the menu. The bindings that
+/// depend on where the game is read [phase] when they fire rather than
+/// when they are built, so one map serves every phase.
+Map<ShortcutActivator, VoidCallback> gameKeyBindings({
+  required GamePhase Function() phase,
+  required void Function(Direction) onTurn,
+  required VoidCallback onPrimary,
+  required VoidCallback onPause,
+  required VoidCallback onExitToMenu,
+}) {
+  SingleActivator key(LogicalKeyboardKey k) => SingleActivator(k);
+  return {
+    key(LogicalKeyboardKey.arrowUp): () => onTurn(Direction.up),
+    key(LogicalKeyboardKey.arrowDown): () => onTurn(Direction.down),
+    key(LogicalKeyboardKey.arrowLeft): () => onTurn(Direction.left),
+    key(LogicalKeyboardKey.arrowRight): () => onTurn(Direction.right),
+    key(LogicalKeyboardKey.keyW): () => onTurn(Direction.up),
+    key(LogicalKeyboardKey.keyS): () => onTurn(Direction.down),
+    key(LogicalKeyboardKey.keyA): () => onTurn(Direction.left),
+    key(LogicalKeyboardKey.keyD): () => onTurn(Direction.right),
+    key(LogicalKeyboardKey.space): onPrimary,
+    key(LogicalKeyboardKey.enter): onPrimary,
+    key(LogicalKeyboardKey.escape): () {
+      final at = phase();
+      if (at == GamePhase.running) {
+        onPause();
+      } else if (at == GamePhase.paused || at == GamePhase.gameOver) {
+        onExitToMenu();
+      }
+    },
+    key(LogicalKeyboardKey.keyP): () {
+      final at = phase();
+      if (at == GamePhase.running || at == GamePhase.paused) onPrimary();
+    },
+    key(LogicalKeyboardKey.keyM): () {
+      if (phase() != GamePhase.ready) onExitToMenu();
+    },
+    key(LogicalKeyboardKey.keyQ): () {
+      if (phase() != GamePhase.ready) onExitToMenu();
+    },
+  };
 }

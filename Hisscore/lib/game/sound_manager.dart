@@ -93,6 +93,8 @@ class SoundManager {
   Future<void> playEat() => _play('eat');
   Future<void> playBonus() => _play('bonus');
   Future<void> playLevelUp() => _play('levelup');
+  Future<void> playCloseCall() => _play('closecall');
+  Future<void> playNewBest() => _play('newbest');
   Future<void> playGameOver() => _play('gameover');
 
   Future<void> _play(String name) async {

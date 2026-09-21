@@ -184,6 +184,64 @@ class SnakeEngine {
   /// shields purely cosmetic/score fodder — nothing stops a crash.
   bool get shieldActive => hasShield && mode != GameMode.hardcore;
 
+  // ─── Grace ────────────────────────────────────────
+
+  /// Extra ticks a doomed snake gets before the run ends.
+  ///
+  /// Most deaths that feel unfair are a turn that landed one frame
+  /// late: the player did steer, the tick had already gone. One held
+  /// tick is enough to make those land, and short enough that nobody
+  /// can play off the walls on purpose. Hardcore gets none — being
+  /// unforgiving is the whole of what it sells.
+  int get graceTicks => mode == GameMode.hardcore ? 0 : 1;
+
+  /// Whether the current brush with death has already been forgiven.
+  /// Cleared the moment the snake completes a safe move, so the grace
+  /// is per-scrape rather than per-run.
+  bool graceSpent = false;
+
+  /// This tick was held on the brink instead of moving. Lives for one
+  /// tick, like [justAte], so the UI can react to the moment.
+  bool graceHeld = false;
+
+  /// Whether the snake is frozen one move from dying, waiting to see if
+  /// a turn arrives.
+  bool get onTheBrink => graceHeld;
+
+  /// What a close call pays. Small on purpose: it is a thank-you for a
+  /// save, not a reason to go hunting for walls.
+  static const int closeCallPoints = 5;
+
+  /// Scrapes survived this run — held on the brink and steered out of
+  /// it. Worth reading on the end screen, and the thing milestones
+  /// count.
+  int closeCalls = 0;
+
+  /// A scrape was survived on this tick. One tick long, like [justAte].
+  bool justSurvivedCloseCall = false;
+
+  // ─── Second chance ────────────────────────────────
+
+  /// Modes a second chance belongs in: the long, exploratory ones.
+  /// Classic is the pure ruleset and stays pure, Hardcore sells being
+  /// unforgiving, and Zen cannot die in the first place.
+  static const reviveModes = {GameMode.adventure, GameMode.endless};
+
+  /// How far from the head obstacles are swept when a run is revived,
+  /// so the snake does not come back inside a wall it cannot escape.
+  static const int reviveClearRadius = 3;
+
+  /// This run has already been brought back once. Never cleared except
+  /// by [reset] — one per run is the whole bargain.
+  bool revived = false;
+
+  /// Whether this run could be brought back right now.
+  bool get canRevive =>
+      !revived &&
+      !won &&
+      phase == GamePhase.gameOver &&
+      reviveModes.contains(mode);
+
   // ─── Tick tracking ────────────────────────────────
 
   int totalTicks = 0;
@@ -247,6 +305,13 @@ class SnakeEngine {
     hasShield = false;
     speedBurstUntilMs = 0;
     magnetUntilMs = 0;
+
+    // Grace
+    graceSpent = false;
+    graceHeld = false;
+    closeCalls = 0;
+    justSurvivedCloseCall = false;
+    revived = false;
 
     // Level
     level = 1;
@@ -312,6 +377,11 @@ class SnakeEngine {
     justAte = false;
     lastEatenFood = null;
     levelJustAdvanced = false;
+    justSurvivedCloseCall = false;
+    // Whether the tick about to run is the one the snake was given to
+    // save itself. Read before the flag is cleared for this tick.
+    final wasHeld = graceHeld;
+    graceHeld = false;
     totalTicks++;
     elapsedMs += tickInterval.inMilliseconds;
     previousSnake = List.of(snake);
@@ -335,7 +405,7 @@ class SnakeEngine {
         hasShield = false;
         next = _wrap(next);
       } else {
-        phase = GamePhase.gameOver;
+        _fatalMove();
         return;
       }
     }
@@ -347,7 +417,7 @@ class SnakeEngine {
       } else if (shieldActive) {
         hasShield = false;
       } else {
-        phase = GamePhase.gameOver;
+        _fatalMove();
         return;
       }
     }
@@ -359,7 +429,7 @@ class SnakeEngine {
     // ── Self-collision ──
     final bodyToCheck = eating ? snake : snake.sublist(0, snake.length - 1);
     if (!isInvulnerable && bodyToCheck.contains(next)) {
-      phase = GamePhase.gameOver;
+      _fatalMove();
       return;
     }
 
@@ -400,6 +470,115 @@ class SnakeEngine {
 
     // Ensure we always have at least one apple.
     _ensurePrimaryApple();
+
+    // The snake got through a whole tick alive, so the next scrape
+    // starts with its grace intact — and if it was on the brink when
+    // the tick began, it just steered out of one.
+    graceSpent = false;
+    if (wasHeld) {
+      closeCalls++;
+      justSurvivedCloseCall = true;
+      score += (closeCallPoints * scoreMultiplier).round();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Second chance
+  // ═══════════════════════════════════════════════════
+
+  /// Brings a finished run back, once, leaving it paused at the brink
+  /// it died on.
+  ///
+  /// What survives is what the player earned: the score, the apples,
+  /// the level, the clock. What is taken is the position they had
+  /// built — the snake is halved, the combo is dropped, and the
+  /// obstacles crowding the head are swept so the snake does not come
+  /// back inside a wall it cannot escape.
+  ///
+  /// The phase is left [GamePhase.paused] rather than running, because
+  /// dropping a player straight back into a moving game is how you
+  /// turn a rescue into a second death. Whoever called this counts
+  /// them back in.
+  void revive() {
+    if (!canRevive) return;
+    revived = true;
+
+    final keep = max(3, snake.length ~/ 2);
+    snake = snake.sublist(0, min(keep, snake.length));
+    previousSnake = List.of(snake);
+
+    obstacles = {
+      for (final o in obstacles)
+        if (_chebyshev(o, head) > reviveClearRadius) o,
+    };
+
+    comboCount = 0;
+    lastEatMs = -comboWindowMs - 1;
+    inputQueue.clear();
+    graceSpent = false;
+    graceHeld = false;
+    justSurvivedCloseCall = false;
+
+    // The heading that killed the snake will kill it again on the very
+    // first tick, so it is turned to whichever way is actually open.
+    direction = _openDirection();
+
+    _ensurePrimaryApple();
+    phase = GamePhase.paused;
+  }
+
+  static int _chebyshev(GridPoint a, GridPoint b) {
+    final dx = (a.x - b.x).abs();
+    final dy = (a.y - b.y).abs();
+    return dx > dy ? dx : dy;
+  }
+
+  /// The current heading if it is survivable, otherwise a turn that is
+  /// — and the current one again if the snake is boxed in, which is
+  /// the player's problem to solve in the second they are given.
+  Direction _openDirection() {
+    final candidates = [
+      direction,
+      for (final d in Direction.values)
+        if (d != direction && d != direction.opposite) d,
+    ];
+    for (final d in candidates) {
+      if (_survivable(d)) return d;
+    }
+    return direction;
+  }
+
+  bool _survivable(Direction d) {
+    var next = head + d.delta;
+    final outside =
+        next.x < 0 || next.y < 0 || next.x >= columns || next.y >= rows;
+    if (outside) {
+      if (!wrapEnabled) return false;
+      next = _wrap(next);
+    }
+    if (obstacles.contains(next)) return false;
+    // The tail vacates as the snake moves, so the last segment is free.
+    return !snake.sublist(0, snake.length - 1).contains(next);
+  }
+
+  /// The move the snake was about to make would have killed it.
+  ///
+  /// Once per scrape, and never in Hardcore, the snake is held exactly
+  /// where it is for one tick instead — the rest of this tick is
+  /// skipped, so nothing moves, spawns, despawns or decays and the
+  /// board is untouched when the player's late turn lands. A second
+  /// doomed tick with nothing queued is the real thing.
+  ///
+  /// Grace is only offered with an empty input queue: a player who has
+  /// already banked a turn is steering, not scraping, and that turn
+  /// gets applied on the next tick regardless.
+  void _fatalMove() {
+    if (graceTicks > 0 && !graceSpent && inputQueue.isEmpty) {
+      graceSpent = true;
+      graceHeld = true;
+      return;
+    }
+    phase = GamePhase.gameOver;
   }
 
   // ═══════════════════════════════════════════════════

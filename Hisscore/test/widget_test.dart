@@ -254,6 +254,8 @@ void main() {
 
     // Run straight into the wall.
     await tester.pump(const Duration(seconds: 6));
+    // Wait out the slow-motion beat before the card appears.
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('GAME OVER'), findsOneWidget);
     expect(
       find.textContaining(RegExp(r'^CHALLENGE [A-Z0-9]{4}-[A-Z0-9]{4}$')),
@@ -279,6 +281,8 @@ void main() {
     await tester.tap(find.text('PLAY'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1300));
+    // Wait out the slow-motion beat before the card appears.
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('GAME OVER'), findsOneWidget);
     expect(find.text('PLAY AGAIN'), findsOneWidget);

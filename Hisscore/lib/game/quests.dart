@@ -76,12 +76,17 @@ class RunSummary {
     required this.score,
     required this.bestCombo,
     required this.powerUps,
+    this.closeCalls = 0,
   });
 
   final int apples;
   final int score;
   final int bestCombo;
   final int powerUps;
+
+  /// Scrapes the grace tick let the player steer out of. Pays no XP of
+  /// its own — the points already landed — but milestones count it.
+  final int closeCalls;
 
   /// XP for playing, before any quest bonus: an apple is worth 1, and
   /// every 20 points on top of that is worth 1.
@@ -144,11 +149,18 @@ class PlayerProgress {
 /// What applying a run changed.
 class RunOutcome {
   const RunOutcome({
+    required this.before,
     required this.progress,
     required this.xpGained,
     required this.completedNow,
-    required this.levelBefore,
   });
+
+  /// Where the player stood before the run, rolled over to today. The
+  /// end screen animates from here, so it needs the whole thing and
+  /// not just the level: an XP bar filling from its old position and a
+  /// quest ticking from 6/10 to 9/10 are the parts that make the
+  /// screen worth reading.
+  final PlayerProgress before;
 
   final PlayerProgress progress;
 
@@ -158,10 +170,13 @@ class RunOutcome {
   /// Quests this run finished.
   final List<Quest> completedNow;
 
-  final int levelBefore;
-
+  int get levelBefore => before.level;
   int get levelAfter => progress.level;
   bool get leveledUp => levelAfter > levelBefore;
+
+  /// How far a quest had got before this run, and after it.
+  int progressBefore(Quest quest) => before.progress[quest.id] ?? 0;
+  int progressAfter(Quest quest) => progress.progress[quest.id] ?? 0;
 }
 
 /// Player levels: level 1 at 0 XP, then each level costs 100 XP more than
@@ -241,6 +256,7 @@ abstract final class Quests {
     final gained =
         run.xp + completedNow.fold<int>(0, (sum, quest) => sum + quest.xp);
     return RunOutcome(
+      before: start,
       progress: PlayerProgress(
         xp: start.xp + gained,
         questDayKey: dayKey,
@@ -249,7 +265,6 @@ abstract final class Quests {
       ),
       xpGained: gained,
       completedNow: completedNow,
-      levelBefore: start.level,
     );
   }
 }
