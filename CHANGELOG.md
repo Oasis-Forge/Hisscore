@@ -14,6 +14,10 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   points, counted on the end screen.
 - Beating your own best is announced the moment it happens, instead of only
   at game over.
+- The game-over screen now tells you where you stand: a bar showing this run
+  against your best and how far short it fell, your place on the board and the
+  points to the person above you, an XP bar that fills from where you were, and
+  each daily quest ticking up by what the run just added.
 - The game now buzzes where it should: a tap on an apple, a click on a pickup
   or a close call, a stronger pulse on each combo step, two on a level-up and a
   heavy one on death. There is a vibration switch on the menu next to the sound

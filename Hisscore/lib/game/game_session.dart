@@ -12,6 +12,7 @@ import 'notification_service.dart';
 import 'online_scores.dart';
 import 'quests.dart';
 import 'review_prompter.dart';
+import 'run_standing.dart';
 import 'snake_engine.dart';
 import 'sound_manager.dart';
 
@@ -100,6 +101,12 @@ class GameSession extends ChangeNotifier {
   DailyState dailyState = const DailyState();
   PlayerProgress progress = const PlayerProgress();
   RunOutcome? outcome;
+
+  /// Where the finished run landed on a board, once the board has
+  /// answered. Null while the request is in flight, and null forever
+  /// when there is no backend — the end screen simply leaves the line
+  /// out rather than showing a placeholder.
+  RunStanding? standing;
 
   GameMode selectedMode = GameMode.classic;
   bool isDailyRun = false;
@@ -226,6 +233,7 @@ class GameSession extends ChangeNotifier {
     }
     newHighScore = false;
     outcome = null;
+    standing = null;
     if (engine.phase == GamePhase.gameOver || engine.phase == GamePhase.ready) {
       // A fresh run always gets an engine sized to this screen.
       engine = newEngine();
@@ -255,6 +263,7 @@ class GameSession extends ChangeNotifier {
     challenge = null;
     newHighScore = false;
     outcome = null;
+    standing = null;
     engine.start();
     startedAt = now();
     armTicker();
@@ -276,6 +285,7 @@ class GameSession extends ChangeNotifier {
     challenge = code;
     newHighScore = false;
     outcome = null;
+    standing = null;
     engine.start();
     startedAt = now();
     armTicker();
@@ -290,6 +300,7 @@ class GameSession extends ChangeNotifier {
     engine.phase = GamePhase.ready;
     newHighScore = false;
     outcome = null;
+    standing = null;
     isDailyRun = false;
     challenge = null;
     _notify();
@@ -438,7 +449,11 @@ class GameSession extends ChangeNotifier {
       await _persistDailyResult();
     }
     await _recordProgress();
-    unawaited(_submitOnline());
+    // Awaited, not fired and forgotten: nothing in the app waits on
+    // `persistGameEnd` itself, so a slow board delays only the standing
+    // line appearing — and folding it in here gives that line one
+    // future to be waited on instead of two.
+    await _submitOnline();
   }
 
   /// Pays out XP for the run just finished and moves today's quests
@@ -495,24 +510,39 @@ class GameSession extends ChangeNotifier {
   Future<void> _submitOnline() async {
     if (!onlineScores.available || engine.score <= 0) return;
     final name = displayName;
+    final score = engine.score;
     try {
       if (isDailyRun) {
         await onlineScores.submit(
           BoardId.daily(dailyDayNumber),
           name: name,
-          score: engine.score,
+          score: score,
         );
       }
       if (countsForLeaderboard) {
         await onlineScores.submit(
           BoardId.allTime(engine.mode),
           name: name,
-          score: engine.score,
+          score: score,
         );
       }
+      await _readStanding(score);
     } catch (e) {
       debugPrint('Online score submit failed: $e');
     }
+  }
+
+  /// Asks the board the run belongs on where the run landed, so the end
+  /// screen can name the next target. The daily wins when a run is both,
+  /// because that is the board the player came for.
+  Future<void> _readStanding(int score) async {
+    final (board, label) = isDailyRun
+        ? (BoardId.daily(dailyDayNumber), 'THE DAILY')
+        : (BoardId.allTime(engine.mode), '${engine.mode.label} ALL-TIME');
+    if (!isDailyRun && !countsForLeaderboard) return;
+    final entries = await onlineScores.top(board);
+    standing = RunStanding.of(entries: entries, score: score, board: label);
+    _notify();
   }
 
   Future<void> setPlayerName(String name) async {

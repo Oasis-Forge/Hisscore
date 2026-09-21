@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../game/high_score_store.dart';
 import '../game/quests.dart';
+import '../game/run_standing.dart';
 import '../game/snake_engine.dart';
 import 'controls.dart';
+import 'end_of_run.dart';
 import 'theme.dart';
 import 'unlocks.dart';
 
@@ -24,6 +26,9 @@ class GameOverlay extends StatelessWidget {
     required this.onShare,
     required this.onResume,
     required this.onExitToMenu,
+    this.highScore = 0,
+    this.standing,
+    this.quests = const [],
   });
 
   final GamePhase phase;
@@ -42,6 +47,15 @@ class GameOverlay extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onResume;
   final VoidCallback onExitToMenu;
+
+  /// The best on this device, for the bar the run is measured against.
+  final int highScore;
+
+  /// Where the run landed on a board, when one answered.
+  final RunStanding? standing;
+
+  /// Today's quests, so the ones this run moved can tick up.
+  final List<Quest> quests;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +86,17 @@ class GameOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   ScoreBreakdown(engine: engine),
+                  // Everything below is the answer to "was that any
+                  // good, and what would be better" — the question the
+                  // player is actually asking at this moment.
+                  if (highScore > 0) ...[
+                    const SizedBox(height: 14),
+                    ScoreVsBest(score: engine.score, best: highScore),
+                  ],
+                  if (standing != null) ...[
+                    const SizedBox(height: 12),
+                    BoardStanding(standing: standing!),
+                  ],
                   if (isDailyRun) ...[
                     const SizedBox(height: 10),
                     Text(
@@ -90,6 +115,9 @@ class GameOverlay extends StatelessWidget {
                     ),
                   ],
                   if (outcome != null) ...[
+                    const SizedBox(height: 14),
+                    XpBar(outcome: outcome!),
+                    QuestProgressList(outcome: outcome!, quests: quests),
                     const SizedBox(height: 10),
                     _ProgressLines(outcome: outcome!),
                   ],
