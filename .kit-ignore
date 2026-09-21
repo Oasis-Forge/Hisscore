@@ -6,3 +6,4 @@
 # root, which is where the kit assumes it is.
 scripts/version.sh        # VERSION_FILE points at Hisscore/pubspec.yaml
 .github/dependabot.yml    # directory: /Hisscore, for the same reason
+docs/STACK_NOTES.md       # ci.yaml and Hisscore/dist paths, for the same reason
