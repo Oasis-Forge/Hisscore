@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'food_types.dart';
 import 'level.dart';
+import 'weekly_modifier.dart';
 
 // ─── Enums ──────────────────────────────────────────────
 
@@ -10,6 +11,14 @@ enum Direction {
   down,
   left,
   right;
+
+  /// Left and right swapped, up and down left alone: a mirror flips
+  /// one axis, not both.
+  Direction get mirrored => switch (this) {
+    Direction.left => Direction.right,
+    Direction.right => Direction.left,
+    _ => this,
+  };
 
   Direction get opposite => switch (this) {
     Direction.up => Direction.down,
@@ -87,6 +96,8 @@ class SnakeEngine {
     this.minTick = const Duration(milliseconds: 90),
     this.firstFoodDistance = 4,
     this.mode = GameMode.classic,
+    this.modifier,
+    this.fixedGrid = false,
     Random? random,
   }) : random = random ?? Random() {
     reset();
@@ -103,6 +114,18 @@ class SnakeEngine {
   final int firstFoodDistance;
   final Random random;
   GameMode mode;
+
+  /// The daily's weekly rule, when this run is one. The engine honours
+  /// the parts of it that are rules; the board draws the fog and the
+  /// caller picks the grid, because those are not.
+  final WeeklyModifier? modifier;
+
+  /// Whether this grid is the same on every device — the daily and a
+  /// friend's code — so the screen letterboxes to it instead of the
+  /// board being reshaped to the screen. Asked of the engine rather
+  /// than guessed from its dimensions, which stopped being a reliable
+  /// signal once a modifier could change them.
+  final bool fixedGrid;
 
   // ─── Game state ───────────────────────────────────
 
@@ -178,7 +201,8 @@ class SnakeEngine {
   int magnetUntilMs = 0;
 
   bool get speedBurstActive => elapsedMs < speedBurstUntilMs;
-  bool get magnetActive => elapsedMs < magnetUntilMs;
+  bool get magnetActive =>
+      elapsedMs < magnetUntilMs || modifier == WeeklyModifier.magnetMadness;
 
   /// Whether shields can currently save the snake. Hardcore mode makes
   /// shields purely cosmetic/score fodder — nothing stops a crash.
@@ -258,7 +282,25 @@ class SnakeEngine {
 
   // ─── Wrap mode ────────────────────────────────────
 
-  bool get wrapEnabled => mode == GameMode.endless || mode == GameMode.zen;
+  bool get wrapEnabled =>
+      mode == GameMode.endless ||
+      mode == GameMode.zen ||
+      modifier == WeeklyModifier.noWalls;
+
+  /// Under fog, whether a cell is close enough to the head to be lit.
+  ///
+  /// The rule lives here rather than in the painter so that the board
+  /// and anything else that wants to know cannot answer it differently.
+  /// Distance is straight-line, so the lit patch is a disc: the board
+  /// draws it with a round glow, and a square rule under a round light
+  /// would leave cells that count as lit sitting in the dark.
+  bool lit(GridPoint cell) {
+    if (modifier != WeeklyModifier.fog) return true;
+    final dx = cell.x - head.x;
+    final dy = cell.y - head.y;
+    return dx * dx + dy * dy <=
+        WeeklyModifier.fogRadius * WeeklyModifier.fogRadius;
+  }
 
   /// Zen mode never ends the run on a collision — the snake just
   /// glides through itself and any obstacle.
@@ -289,7 +331,9 @@ class SnakeEngine {
     foodsEaten = 0;
     justAte = false;
     won = false;
-    tickInterval = initialTick;
+    tickInterval = modifier == WeeklyModifier.doubleSpeed
+        ? initialTick ~/ 2
+        : initialTick;
     phase = GamePhase.ready;
     totalTicks = 0;
     totalApplesEaten = 0;
@@ -350,7 +394,11 @@ class SnakeEngine {
   /// works but a reverse is still rejected.
   static const int maxQueuedTurns = 2;
 
-  void queueTurn(Direction next) {
+  void queueTurn(Direction wanted) {
+    // Mirroring happens here rather than in the input layer so that
+    // every way in — swipe, arrow key, WASD — is bent the same way,
+    // and so the rule can be tested without a finger.
+    final next = modifier == WeeklyModifier.mirrored ? wanted.mirrored : wanted;
     final reference = inputQueue.isNotEmpty ? inputQueue.last : direction;
     if (next == reference || next == reference.opposite) {
       return;
@@ -677,6 +725,14 @@ class SnakeEngine {
     if (mode == GameMode.hardcore) {
       baseMs = (baseMs * 0.85).round().clamp(
         minTick.inMilliseconds,
+        initialTick.inMilliseconds,
+      );
+    }
+
+    // Double speed, for the whole run rather than for a pickup.
+    if (modifier == WeeklyModifier.doubleSpeed) {
+      baseMs = (baseMs * 0.5).round().clamp(
+        (minTick.inMilliseconds * 0.5).round(),
         initialTick.inMilliseconds,
       );
     }

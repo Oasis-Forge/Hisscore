@@ -5,6 +5,11 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- The daily challenge now plays by a different rule every week, the same one
+  for everybody: everything twice as fast, no walls, mirrored steering, fog
+  that lights only the ground near your head, a smaller board, or food that
+  comes to you. The week's rule is named on the daily card before you press
+  play, on the game-over card, and on what you share.
 - Deaths are fairer. A turn that lands a frame too late now still counts: the
   snake freezes for one tick on the brink instead of dying outright, so the
   input you swear you made actually saves you. Hardcore is untouched.

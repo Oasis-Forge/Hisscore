@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../game/attract_demo.dart';
 import '../game/challenge_code.dart';
-import '../game/daily_challenge.dart';
 import '../game/game_session.dart';
 import '../game/high_score_store.dart';
 import '../game/online_scores.dart';
@@ -496,11 +495,12 @@ class _GamePageState extends State<GamePage>
         final area = constraints.biggest;
         // The daily and challenges have a fixed shape; on a screen of
         // another shape they are letterboxed rather than stretched.
-        final fixed =
-            (session.isDailyRun || session.challenge != null) &&
-            engine.columns == DailyChallenge.gridColumns &&
-            engine.rows == DailyChallenge.gridRows;
-        final size = fixed ? _fitAspect(area, DailyChallenge.gridAspect) : area;
+        // Asked of the engine, because a weekly modifier can change the
+        // daily's grid and the old check — "is it 20 by 30?" — then
+        // quietly stopped recognising its own board.
+        final size = engine.fixedGrid
+            ? _fitAspect(area, engine.columns / engine.rows)
+            : area;
         effects.measure(
           size: size,
           offset: Offset.zero,
@@ -508,7 +508,7 @@ class _GamePageState extends State<GamePage>
           rows: engine.rows,
         );
         final layers = _buildBoardLayers();
-        if (!fixed) return layers;
+        if (!engine.fixedGrid) return layers;
         return Center(
           child: SizedBox(
             width: size.width,

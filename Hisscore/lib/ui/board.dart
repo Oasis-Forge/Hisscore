@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../game/food_types.dart';
 import '../game/snake_engine.dart';
+import '../game/weekly_modifier.dart';
 import 'backdrops.dart';
 import 'particles.dart';
 import 'snake_skin.dart';
@@ -349,6 +350,13 @@ class SnakeBoardPainter extends CustomPainter {
       _paintFood(canvas, item, cellW, cellH);
     }
 
+    // ── Fog ──
+    // Painted over everything the run puts on the board and under the
+    // CRT overlay, so the dark hides the board rather than the screen.
+    if (engine.modifier == WeeklyModifier.fog) {
+      _paintFog(canvas, size, cellW, cellH);
+    }
+
     // ── Particles ──
     particles?.update();
     particles?.paint(canvas);
@@ -548,6 +556,58 @@ class SnakeBoardPainter extends CustomPainter {
   /// Short streaks trailing off the tail while a speed burst is active, so
   /// they read as the snake leaving speed lines behind it rather than
   /// smearing across its own body.
+  /// Darkness everywhere but a disc around the head, matching
+  /// [SnakeEngine.lit] — the rule is the engine's, this only draws it.
+  ///
+  /// The head is taken from the interpolated position rather than the
+  /// grid cell so the light travels with the snake instead of jumping
+  /// a whole cell each tick.
+  void _paintFog(Canvas canvas, Size size, double cellW, double cellH) {
+    final head = engine.head;
+    final previous = engine.previousSnake.isEmpty
+        ? head
+        : engine.previousSnake.first;
+    final centre = Offset(
+      (_lerp(previous.x, head.x) + 0.5) * cellW,
+      (_lerp(previous.y, head.y) + 0.5) * cellH,
+    );
+    final cell = (cellW + cellH) / 2;
+    final lit = WeeklyModifier.fogRadius * cell;
+    final dark = lit + WeeklyModifier.fogFeather * cell;
+    // The whole board has to be covered whatever the head is near, and
+    // a gradient only paints as far as its own radius.
+    final reach = size.longestSide * 2;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            RetroColors.voidBg.withValues(alpha: 0),
+            RetroColors.voidBg.withValues(alpha: 0),
+            RetroColors.voidBg,
+            RetroColors.voidBg,
+          ],
+          stops: [0, lit / reach, dark / reach, 1],
+        ).createShader(Rect.fromCircle(center: centre, radius: reach)),
+    );
+
+    // The walls stay visible through it. Fog is meant to hide where the
+    // food is, not where the board ends: dying into an edge that was
+    // never drawn is not a difficulty, it is a missing picture.
+    if (!engine.wrapEnabled) {
+      canvas.drawRect(
+        (Offset.zero & size).deflate(0.5),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = RetroColors.phosphorDim.withValues(alpha: 0.35),
+      );
+    }
+  }
+
+  /// Where a coordinate sits between last tick and this one.
+  double _lerp(int from, int to) => from + (to - from) * tickProgress;
+
   void _paintSpeedStreaks(Canvas canvas, double cellW, double cellH) {
     final last = engine.snake.length - 1;
     final tail = _segmentRect(last, cellW, cellH).center;

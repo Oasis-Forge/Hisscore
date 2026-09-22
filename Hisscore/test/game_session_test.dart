@@ -292,14 +292,16 @@ void main() {
     expect(await board.top(BoardId.daily(s.dailyDayNumber)), isEmpty);
   });
 
-  test('a daily run is submitted to both boards', () async {
+  test('a daily run goes on the daily board and no other', () async {
     final board = InMemoryOnlineScoreBoard();
     final s = build(online: board);
     s.startDaily();
     await runToDeath(s);
 
     expect(await board.top(BoardId.daily(s.dailyDayNumber)), hasLength(1));
-    expect(await board.top(BoardId.allTime(GameMode.classic)), hasLength(1));
+    // Every week bends the daily by some rule, so a daily score is
+    // never a plain Classic score and does not belong next to them.
+    expect(await board.top(BoardId.allTime(GameMode.classic)), isEmpty);
   });
 
   test('a save that outlives its page does not throw', () async {

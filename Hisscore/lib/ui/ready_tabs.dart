@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/daily_challenge.dart';
 import '../game/high_score_store.dart';
 import '../game/online_scores.dart';
 import '../game/quests.dart';
@@ -366,6 +367,11 @@ class DailyChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Derived from the day rather than passed in, so the rule named on
+    // the card and the rule the run is played under cannot drift apart.
+    // It is named before the run, not sprung on the player once they
+    // are in it: a modifier is a reason to press the button.
+    final modifier = DailyChallenge.modifierForDay(dayNumber);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -382,6 +388,18 @@ class DailyChallengeCard extends StatelessWidget {
           Text(
             'DAILY CHALLENGE #$dayNumber',
             style: RetroText.pixel(size: 8, color: RetroColors.zenBlue),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'THIS WEEK: ${modifier.label}',
+            textAlign: TextAlign.center,
+            style: RetroText.pixel(size: 8, color: RetroColors.amber),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            modifier.blurb.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: RetroText.pixel(size: 6, color: RetroColors.metal),
           ),
           if (dailyState.currentStreak > 0) ...[
             const SizedBox(height: 6),

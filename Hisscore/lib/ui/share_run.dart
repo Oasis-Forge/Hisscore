@@ -69,6 +69,7 @@ String _shareText({
       apples: engine.totalApplesEaten,
       bestCombo: engine.bestCombo,
       streak: dailyState.currentStreak,
+      modifier: engine.modifier,
     );
   }
   if (challenge != null) {
@@ -92,7 +93,11 @@ String _subtitle({
   ChallengeCode? challenge,
 }) {
   if (isDailyRun) {
-    return 'DAILY #$dailyDayNumber  ·  STREAK ${dailyState.currentStreak}';
+    final rule = engine.modifier == null
+        ? ''
+        : '  ·  ${engine.modifier!.label}';
+    return 'DAILY #$dailyDayNumber  ·  '
+        'STREAK ${dailyState.currentStreak}$rule';
   }
   if (challenge != null) return '${engine.mode.label}  ·  ${challenge.text}';
   // A run that was brought back says so, next to the score it kept.

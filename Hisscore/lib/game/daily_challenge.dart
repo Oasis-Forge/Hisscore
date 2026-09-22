@@ -1,3 +1,5 @@
+import 'weekly_modifier.dart';
+
 /// Pure logic for the daily challenge: everyone who plays on the same
 /// calendar day gets the same food/obstacle layout (via a shared RNG
 /// seed), and playing on consecutive days builds a streak.
@@ -40,6 +42,43 @@ abstract final class DailyChallenge {
 
   /// Deterministic RNG seed for a given day number.
   static int seedForDay(int dayNumber) => dayNumber * 2654435761 & 0x7FFFFFFF;
+
+  /// The date a day number stands for — [dayNumber] run backwards.
+  static DateTime dateForDay(int dayNumber) =>
+      epoch.add(Duration(days: dayNumber - 1));
+
+  /// The ISO 8601 week number: weeks run Monday to Sunday, and week 1
+  /// is the one holding the first Thursday of the year.
+  static int isoWeek(DateTime date) {
+    final d = date.toUtc();
+    final day = DateTime.utc(d.year, d.month, d.day);
+    // The Thursday inside a week decides which year that week belongs
+    // to. That is the whole trick of ISO weeks: no week is ever split
+    // between two years, so none is ever half a number.
+    final thursday = day.add(Duration(days: 4 - day.weekday));
+    final firstOfYear = DateTime.utc(thursday.year, 1, 1);
+    return thursday.difference(firstOfYear).inDays ~/ 7 + 1;
+  }
+
+  /// The rule bending the daily for the week [dayNumber] falls in.
+  ///
+  /// Keyed off the day number rather than "today" so that a day and its
+  /// modifier can never disagree: everything about a daily run comes
+  /// from the same one number.
+  static WeeklyModifier modifierForDay(int dayNumber) {
+    final week = isoWeek(dateForDay(dayNumber));
+    return WeeklyModifier.values[week % WeeklyModifier.values.length];
+  }
+
+  /// The daily board for a modifier, which only [WeeklyModifier.tinyBoard]
+  /// changes.
+  static int columnsFor(WeeklyModifier? modifier) =>
+      modifier == WeeklyModifier.tinyBoard
+      ? WeeklyModifier.tinyColumns
+      : gridColumns;
+
+  static int rowsFor(WeeklyModifier? modifier) =>
+      modifier == WeeklyModifier.tinyBoard ? WeeklyModifier.tinyRows : gridRows;
 
   /// Computes the new streak count given the last day the challenge was
   /// completed and today's date.
@@ -97,9 +136,11 @@ abstract final class DailyChallenge {
     required int apples,
     required int bestCombo,
     required int streak,
+    WeeklyModifier? modifier,
   }) {
     final best = bestCombo > 1 ? ' · combo x$bestCombo' : '';
-    return 'HISCORE Daily #$dayNumber 🐍\n'
+    final rule = modifier == null ? '' : ' · ${modifier.label}';
+    return 'HISCORE Daily #$dayNumber 🐍$rule\n'
         '${scoreBar(score)}\n'
         '$score pts · $apples 🍎$best\n'
         'Streak $streak 🔥';

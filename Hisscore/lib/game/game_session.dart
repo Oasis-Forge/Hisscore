@@ -15,6 +15,7 @@ import 'review_prompter.dart';
 import 'run_standing.dart';
 import 'snake_engine.dart';
 import 'sound_manager.dart';
+import 'weekly_modifier.dart';
 
 /// The grid a fresh engine should get. The page measures the screen;
 /// the session only asks for the answer.
@@ -146,6 +147,11 @@ class GameSession extends ChangeNotifier {
 
   int get dailyDayNumber => DailyChallenge.dayNumber(now());
 
+  /// The rule bending this week's daily. Read before a run to name it
+  /// on the card that offers it, and after one to put it on the share.
+  WeeklyModifier get dailyModifier =>
+      DailyChallenge.modifierForDay(dailyDayNumber);
+
   /// Progress as of today: yesterday's quest state is dropped, XP kept.
   PlayerProgress get todayProgress => Quests.rolled(progress, todayKey);
 
@@ -160,6 +166,16 @@ class GameSession extends ChangeNotifier {
   /// Zen mode never ends and scores climb forever — it doesn't compete
   /// on the leaderboard or count toward the high score.
   bool get countsForLeaderboard => engine.mode != GameMode.zen;
+
+  /// Whether the run belongs on its mode's all-time board.
+  ///
+  /// A daily played under a weekly rule does not: no walls takes away
+  /// the main way to die and magnet madness hands the player their
+  /// food, so a score earned that way would sit above Classic runs it
+  /// never competed with. It still counts on the daily's own board,
+  /// where everyone played the same strange game.
+  bool get countsForAllTimeBoard =>
+      countsForLeaderboard && engine.modifier == null;
 
   // ─── Second chance ────────────────────────────────
 
@@ -274,18 +290,24 @@ class GameSession extends ChangeNotifier {
     GameMode? mode,
     Random? random,
     bool fixedGrid = false,
+    WeeklyModifier? modifier,
   }) {
     final injected = engineFactory;
     if (injected != null && random == null) return injected();
     // The daily and challenge codes are one fixed size on every device;
     // everything else is shaped to the screen.
     final grid = fixedGrid
-        ? (columns: DailyChallenge.gridColumns, rows: DailyChallenge.gridRows)
+        ? (
+            columns: DailyChallenge.columnsFor(modifier),
+            rows: DailyChallenge.rowsFor(modifier),
+          )
         : gridProvider?.call();
     return SnakeEngine(
       columns: grid?.columns ?? 20,
       rows: grid?.rows ?? 20,
       mode: mode ?? selectedMode,
+      modifier: modifier,
+      fixedGrid: fixedGrid,
       random: random,
     );
   }
@@ -333,6 +355,7 @@ class GameSession extends ChangeNotifier {
       mode: GameMode.classic,
       random: Random(seed),
       fixedGrid: true,
+      modifier: dailyModifier,
     );
     engine.mode = GameMode.classic;
     selectedMode = GameMode.classic;
@@ -602,7 +625,7 @@ class GameSession extends ChangeNotifier {
           score: score,
         );
       }
-      if (countsForLeaderboard) {
+      if (countsForAllTimeBoard) {
         await onlineScores.submit(
           BoardId.allTime(engine.mode),
           name: name,
@@ -622,7 +645,7 @@ class GameSession extends ChangeNotifier {
     final (board, label) = isDailyRun
         ? (BoardId.daily(dailyDayNumber), 'THE DAILY')
         : (BoardId.allTime(engine.mode), '${engine.mode.label} ALL-TIME');
-    if (!isDailyRun && !countsForLeaderboard) return;
+    if (!isDailyRun && !countsForAllTimeBoard) return;
     final entries = await onlineScores.top(board);
     standing = RunStanding.of(entries: entries, score: score, board: label);
     _notify();
