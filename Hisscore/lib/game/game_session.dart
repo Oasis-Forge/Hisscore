@@ -8,6 +8,7 @@ import 'daily_challenge.dart';
 import 'food_types.dart';
 import 'haptics.dart';
 import 'high_score_store.dart';
+import 'milestones.dart';
 import 'notification_service.dart';
 import 'online_scores.dart';
 import 'quests.dart';
@@ -102,6 +103,12 @@ class GameSession extends ChangeNotifier {
   DailyState dailyState = const DailyState();
   PlayerProgress progress = const PlayerProgress();
   RunOutcome? outcome;
+
+  /// What the daily run just finished did to the streak, so the end
+  /// card can say a freeze was spent rather than leaving the player to
+  /// work out why their streak survived a day they did not play.
+  /// Null for anything that is not a daily.
+  StreakOutcome? streakOutcome;
 
   /// Where the finished run landed on a board, once the board has
   /// answered. Null while the request is in flight, and null forever
@@ -330,10 +337,13 @@ class GameSession extends ChangeNotifier {
     _resetRunFlags();
     newHighScore = false;
     outcome = null;
+    streakOutcome = null;
     standing = null;
     if (engine.phase == GamePhase.gameOver || engine.phase == GamePhase.ready) {
-      // A fresh run always gets an engine sized to this screen.
-      engine = newEngine();
+      // A fresh run gets an engine sized to this screen — except Time
+      // Attack, whose whole claim is that sixty seconds on one board
+      // means the same thing on every phone.
+      engine = newEngine(fixedGrid: selectedMode.isTimed);
       engine.mode = selectedMode;
       isDailyRun = false;
       challenge = null;
@@ -363,6 +373,7 @@ class GameSession extends ChangeNotifier {
     challenge = null;
     newHighScore = false;
     outcome = null;
+    streakOutcome = null;
     standing = null;
     engine.start();
     startedAt = now();
@@ -387,6 +398,7 @@ class GameSession extends ChangeNotifier {
     challenge = code;
     newHighScore = false;
     outcome = null;
+    streakOutcome = null;
     standing = null;
     engine.start();
     startedAt = now();
@@ -404,6 +416,7 @@ class GameSession extends ChangeNotifier {
     engine.phase = GamePhase.ready;
     newHighScore = false;
     outcome = null;
+    streakOutcome = null;
     standing = null;
     isDailyRun = false;
     challenge = null;
@@ -535,8 +548,30 @@ class GameSession extends ChangeNotifier {
     unawaited(reviewPrompter.maybePrompt(gamesPlayed: stats.gamesPlayed));
   }
 
+  /// Where the player stands, for the milestones. Reads [progress]
+  /// unless given a newer one — the quest payout lands before the
+  /// milestones are settled, and the level they see has to be the one
+  /// that payout produced.
+  MilestoneFacts _milestoneFacts({PlayerProgress? progress}) => MilestoneFacts(
+    gamesPlayed: stats.gamesPlayed,
+    totalApples: stats.totalApples,
+    bestCombo: stats.bestCombo,
+    bestScore: highScore,
+    level: (progress ?? this.progress).level,
+    streak: dailyState.currentStreak,
+    powerUps: stats.powerUps,
+    bestCloseCalls: stats.bestCloseCalls,
+    challengesPlayed: stats.challengesPlayed,
+    modesPlayed: GameMode.values
+        .where((m) => stats.modesPlayed.contains(m.name))
+        .toSet(),
+  );
+
   @visibleForTesting
   Future<void> persistGameEnd() async {
+    // Taken before anything is written down: it is the "before" half of
+    // every milestone question asked below.
+    final wasAt = _milestoneFacts();
     await _persistHighScore();
     if (countsForLeaderboard) {
       await store.saveScoreEntry(
@@ -547,14 +582,14 @@ class GameSession extends ChangeNotifier {
         ),
       );
     }
-    await store.updateStats(engine);
+    await store.updateStats(engine, challenge: challenge != null);
     topScores = await store.loadTopScores();
     stats = await store.loadStats();
     _notify();
     if (isDailyRun) {
       await _persistDailyResult();
     }
-    await _recordProgress();
+    await _recordProgress(wasAt);
     // Awaited, not fired and forgotten: nothing in the app waits on
     // `persistGameEnd` itself, so a slow board delays only the standing
     // line appearing — and folding it in here gives that line one
@@ -564,7 +599,7 @@ class GameSession extends ChangeNotifier {
 
   /// Pays out XP for the run just finished and moves today's quests
   /// along, and remembers what changed so the game-over card can show it.
-  Future<void> _recordProgress() async {
+  Future<void> _recordProgress(MilestoneFacts wasAt) async {
     final result = Quests.apply(
       progress,
       RunSummary(
@@ -577,9 +612,18 @@ class GameSession extends ChangeNotifier {
       dayNumber: dailyDayNumber,
       dayKey: todayKey,
     );
-    await store.saveProgress(result.progress);
-    progress = result.progress;
-    outcome = result;
+    // A streak can fall back and climb again, so "newly reached" is not
+    // enough on its own to mean "not yet paid for": the ids already
+    // settled have the last word.
+    final fresh = milestonesEarned(
+      wasAt,
+      _milestoneFacts(progress: result.progress),
+    ).where((m) => !result.progress.milestones.contains(m.id)).toList();
+
+    final paid = result.withMilestones(fresh);
+    await store.saveProgress(paid.progress);
+    progress = paid.progress;
+    outcome = paid;
     _notify();
   }
 
@@ -589,11 +633,14 @@ class GameSession extends ChangeNotifier {
   Future<void> _persistDailyResult() async {
     final today = now();
     final alreadyPlayedToday = playedDailyToday;
-    final newStreak = DailyChallenge.nextStreak(
+    final streak = DailyChallenge.nextStreakState(
       lastPlayedKey: dailyState.lastPlayedKey,
       previousStreak: dailyState.currentStreak,
+      freezes: dailyState.freezes,
       today: today,
     );
+    final newStreak = streak.streak;
+    streakOutcome = streak;
     final newState = DailyState(
       lastPlayedKey: DailyChallenge.dateKey(today),
       lastScore: alreadyPlayedToday
@@ -601,6 +648,7 @@ class GameSession extends ChangeNotifier {
           : engine.score,
       currentStreak: newStreak,
       bestStreak: max(newStreak, dailyState.bestStreak),
+      freezes: streak.freezes,
     );
     await store.saveDailyState(newState);
     dailyState = newState;

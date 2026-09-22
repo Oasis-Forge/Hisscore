@@ -113,6 +113,7 @@ class IntroPanel extends StatelessWidget {
                       questSummary:
                           'QUESTS ${quests.where((q) => progress.completed.contains(q.id)).length}/${quests.length}  \u00B7  LVL ${progress.level}',
                       onOpenQuests: onOpenQuests,
+                      rank: progress.rank,
                     ),
                     ReadyTab.how => const ReadyHowTab(),
                     ReadyTab.look => ReadyLookTab(

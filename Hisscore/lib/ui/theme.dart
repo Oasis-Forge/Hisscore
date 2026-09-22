@@ -41,6 +41,11 @@ abstract final class RetroColors {
   static const magnetPink = Color(0xFFFF6EC7);
   static const zenBlue = Color(0xFF7EC8FF);
 
+  /// A poison apple is the apple colour taken down and greened, because
+  /// the tint is the only tell it gets. Close enough to be missed in a
+  /// hurry, far enough to be seen by a player who looks.
+  static const poison = Color(0xFF7A5A46);
+
   // ─── Gameplay ──────────────────────────────────────
   static const combo = Color(0xFFFFD740);
   static Color get obstacle => current.obstacle;
@@ -57,6 +62,7 @@ extension GameModeUi on GameMode {
     GameMode.endless => RetroColors.shieldCyan,
     GameMode.hardcore => RetroColors.cherry,
     GameMode.zen => RetroColors.zenBlue,
+    GameMode.timeAttack => RetroColors.speedYellow,
   };
 }
 

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/daily_challenge.dart';
+import 'package:hisscore/game/milestones.dart';
 import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/quests.dart';
 import 'package:hisscore/game/snake_engine.dart';
@@ -81,11 +82,16 @@ void main() {
     // Wait out the slow-motion beat before the card appears.
     await tester.pump(const Duration(milliseconds: 500));
 
-    // One apple (10 points): 1 XP for the apple, 0 for the score.
+    // One apple (10 points): 1 XP for the apple, 0 for the score, plus
+    // whatever local firsts a very first run happens to reach.
     expect(find.text('GAME OVER'), findsOneWidget);
-    expect(find.text('+1 XP'), findsOneWidget);
+    final firsts = Milestone.all
+        .where((m) => m.id == 'first-run')
+        .fold<int>(0, (sum, m) => sum + m.xp);
+    expect(find.text('+${1 + firsts} XP'), findsOneWidget);
     final saved = await store.loadProgress();
     expect(saved.xp, greaterThanOrEqualTo(1));
+    expect(saved.milestones, contains('first-run'));
     expect(saved.questDayKey, DailyChallenge.dateKey(DateTime.now()));
   });
 

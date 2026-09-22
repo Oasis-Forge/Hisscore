@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'daily_challenge.dart';
+import 'milestones.dart';
 
 /// What a quest asks for.
 enum QuestKind {
@@ -100,6 +101,7 @@ class PlayerProgress {
     this.questDayKey,
     this.progress = const {},
     this.completed = const {},
+    this.milestones = const {},
   });
 
   final int xp;
@@ -113,13 +115,22 @@ class PlayerProgress {
   /// Quest ids finished today.
   final Set<String> completed;
 
+  /// Milestone ids already paid for. Unlike [completed] these never
+  /// roll over: a milestone is something that happened to this player,
+  /// not today's job.
+  final Set<String> milestones;
+
   int get level => Levels.levelFor(xp);
+
+  /// The label the player carries on the menu, if they have earned one.
+  String? get rank => Milestone.rankFor(milestones);
 
   Map<String, dynamic> toJson() => {
     'xp': xp,
     'questDayKey': questDayKey,
     'progress': progress,
     'completed': completed.toList(),
+    'milestones': milestones.toList(),
   };
 
   factory PlayerProgress.fromJson(Map<String, dynamic> json) => PlayerProgress(
@@ -131,6 +142,9 @@ class PlayerProgress {
     },
     completed: {
       for (final id in (json['completed'] as List? ?? [])) id as String,
+    },
+    milestones: {
+      for (final id in (json['milestones'] as List? ?? [])) id as String,
     },
   );
 
@@ -153,6 +167,7 @@ class RunOutcome {
     required this.progress,
     required this.xpGained,
     required this.completedNow,
+    this.milestonesEarned = const [],
   });
 
   /// Where the player stood before the run, rolled over to today. The
@@ -169,6 +184,30 @@ class RunOutcome {
 
   /// Quests this run finished.
   final List<Quest> completedNow;
+
+  /// Local firsts this run reached, each paid for once.
+  final List<Milestone> milestonesEarned;
+
+  /// The same outcome with [earned] folded in: their XP added on top of
+  /// what the quests paid, and their ids recorded so they are never
+  /// paid for twice.
+  RunOutcome withMilestones(List<Milestone> earned) {
+    if (earned.isEmpty) return this;
+    final bonus = earned.fold<int>(0, (sum, m) => sum + m.xp);
+    return RunOutcome(
+      before: before,
+      progress: PlayerProgress(
+        xp: progress.xp + bonus,
+        questDayKey: progress.questDayKey,
+        progress: progress.progress,
+        completed: progress.completed,
+        milestones: {...progress.milestones, for (final m in earned) m.id},
+      ),
+      xpGained: xpGained + bonus,
+      completedNow: completedNow,
+      milestonesEarned: earned,
+    );
+  }
 
   int get levelBefore => before.level;
   int get levelAfter => progress.level;
@@ -218,7 +257,13 @@ abstract final class Quests {
   /// dropped, XP stays.
   static PlayerProgress rolled(PlayerProgress progress, String dayKey) {
     if (progress.questDayKey == dayKey) return progress;
-    return PlayerProgress(xp: progress.xp, questDayKey: dayKey);
+    // Quest state is today's and goes; XP and milestones are the
+    // player's and stay.
+    return PlayerProgress(
+      xp: progress.xp,
+      questDayKey: dayKey,
+      milestones: progress.milestones,
+    );
   }
 
   /// Applies a finished [run] to [before] for the day [dayNumber] /
@@ -262,6 +307,7 @@ abstract final class Quests {
         questDayKey: dayKey,
         progress: progress,
         completed: completed,
+        milestones: start.milestones,
       ),
       xpGained: gained,
       completedNow: completedNow,

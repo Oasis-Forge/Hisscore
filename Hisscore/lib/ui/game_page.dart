@@ -107,12 +107,18 @@ class _GamePageState extends State<GamePage>
           )
           ..gridProvider = (() => boardGridFor(_playAreaSize))
           ..onTick = (() => _lastTickAt = DateTime.now())
-          ..onAte = ((food, gained) => effects.ate(
-            food,
-            gained,
-            comboCount: engine.comboCount,
-            multiplier: engine.comboMultiplier,
-          ))
+          ..onAte = ((food, gained) {
+            if (food.type.harmful) {
+              effects.poisoned(engine.head);
+              return;
+            }
+            effects.ate(
+              food,
+              gained,
+              comboCount: engine.comboCount,
+              multiplier: engine.comboMultiplier,
+            );
+          })
           ..onLevelUp = effects.levelUp
           ..onCloseCall = (() => effects.closeCall(engine.head))
           ..onNewBest = effects.newBest
@@ -579,6 +585,8 @@ class _GamePageState extends State<GamePage>
                   ? _takeSecondChance
                   : null,
               onSecondChanceExpired: session.refuseSecondChance,
+              streakFreezesSpent: session.streakOutcome?.freezesSpent ?? 0,
+              streakFreezeEarned: session.streakOutcome?.freezeEarned ?? false,
             )
           : null,
       countdown: session.resumeCountdown,

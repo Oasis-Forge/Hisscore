@@ -74,3 +74,46 @@ class PauseButton extends StatelessWidget {
     );
   }
 }
+
+/// The clock on a Time Attack run: a ring that drains, with the seconds
+/// left inside it.
+///
+/// A ring rather than a number alone because the last ten seconds are
+/// the whole mode, and a shape emptying is read out of the corner of an
+/// eye that is busy steering.
+class TimerRing extends StatelessWidget {
+  const TimerRing({super.key, required this.fraction, required this.seconds});
+
+  /// How much of the clock is left, 0 to 1.
+  final double fraction;
+  final int seconds;
+
+  /// Under this many seconds the ring turns and starts to pulse.
+  static const int hurryFrom = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final hurry = seconds <= hurryFrom;
+    final color = hurry ? RetroColors.cherry : RetroColors.speedYellow;
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 34,
+            height: 34,
+            child: CircularProgressIndicator(
+              value: fraction.clamp(0.0, 1.0),
+              strokeWidth: 3,
+              backgroundColor: RetroColors.phosphorDim.withValues(alpha: 0.35),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          Text('$seconds', style: RetroText.pixel(size: 9, color: color)),
+        ],
+      ),
+    );
+  }
+}

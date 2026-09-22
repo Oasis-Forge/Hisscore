@@ -19,10 +19,28 @@ enum FoodType {
 
   /// Magnet: pulls every other food item one step closer each tick
   /// for a short while. Despawns.
-  magnet;
+  magnet,
+
+  /// A golden apple that runs: worth a great deal times the combo, and
+  /// nothing at all if it gets away. Adventure and Endless only.
+  golden,
+
+  /// Hardcore only. It looks like an apple; the tint is the tell.
+  /// Eating it costs three segments and the combo.
+  poison;
 
   /// Whether eating this type causes the snake to grow by one segment.
   bool get growsSnake => this == FoodType.apple;
+
+  /// Whether this pickup is worth more the longer it is left alone.
+  bool get ripens => this == FoodType.star;
+
+  /// Whether this pickup runs from the head instead of waiting to be
+  /// taken.
+  bool get flees => this == FoodType.golden;
+
+  /// Whether taking this hurts.
+  bool get harmful => this == FoodType.poison;
 
   /// Display label for UI.
   String get label => switch (this) {
@@ -32,6 +50,8 @@ enum FoodType {
     FoodType.speedBurst => 'SPEED',
     FoodType.shrink => 'SHRINK',
     FoodType.magnet => 'MAGNET',
+    FoodType.golden => 'GOLDEN',
+    FoodType.poison => 'POISON',
   };
 
   /// What eating it actually does, in the fewest words that still say
@@ -40,11 +60,13 @@ enum FoodType {
   /// avoid.
   String get effect => switch (this) {
     FoodType.apple => 'GROW  ·  +10',
-    FoodType.star => 'NO GROWTH  ·  +50',
+    FoodType.star => 'RIPENS FROM +50 TO +150',
     FoodType.shield => 'SURVIVE ONE HIT',
     FoodType.speedBurst => 'DOUBLE SPEED, BRIEFLY',
     FoodType.shrink => 'LOSE 2 SEGMENTS',
     FoodType.magnet => 'DRAGS FOOD TO YOU',
+    FoodType.golden => 'RUNS AWAY  ·  +100 × COMBO',
+    FoodType.poison => 'LOOKS LIKE AN APPLE. IS NOT',
   };
 }
 
@@ -87,5 +109,25 @@ class FoodItem {
   double lifeFraction(int nowMs) {
     if (lifetimeMs == null) return 1.0;
     return (1.0 - ageMs(nowMs) / lifetimeMs!).clamp(0.0, 1.0);
+  }
+
+  /// What a star is worth the moment it appears, and in its last
+  /// moment before it goes.
+  ///
+  /// The gap between them is the whole point: a star taken on sight is
+  /// worth having, and a star left to ripen is worth three times as
+  /// much — if the player can still reach it, and if they can bear to
+  /// leave it that long.
+  static const int starPointsFresh = 50;
+  static const int starPointsRipe = 150;
+
+  /// What a ripening pickup is worth at [nowMs], before combos and mode
+  /// multipliers. Zero for anything that does not ripen, which is
+  /// everything except the star.
+  int ripePoints(int nowMs) {
+    if (!type.ripens) return 0;
+    final ripeness = 1 - lifeFraction(nowMs);
+    return (starPointsFresh + (starPointsRipe - starPointsFresh) * ripeness)
+        .round();
   }
 }

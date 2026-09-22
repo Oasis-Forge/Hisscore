@@ -103,6 +103,8 @@ flutter:
     - assets/sfx/speed.wav
     - assets/sfx/shrink.wav
     - assets/sfx/magnet.wav
+    - assets/sfx/golden.wav
+    - assets/sfx/poison.wav
     - assets/music/bass.wav
     - assets/music/arp.wav
     - assets/music/lead.wav

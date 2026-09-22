@@ -32,6 +32,8 @@ class GameOverlay extends StatelessWidget {
     this.quests = const [],
     this.onSecondChance,
     this.onSecondChanceExpired,
+    this.streakFreezesSpent = 0,
+    this.streakFreezeEarned = false,
   });
 
   final GamePhase phase;
@@ -64,6 +66,13 @@ class GameOverlay extends StatelessWidget {
   /// offer does not apply, and the card is the plain end of a run.
   final VoidCallback? onSecondChance;
   final VoidCallback? onSecondChanceExpired;
+
+  /// How many banked days this daily run had to spend to keep the
+  /// streak alive, and whether it paid for a new one. Both are said out
+  /// loud: a streak that survives a day you did not play is confusing
+  /// unless the game tells you what it spent.
+  final int streakFreezesSpent;
+  final bool streakFreezeEarned;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +136,28 @@ class GameOverlay extends StatelessWidget {
                         color: RetroColors.zenBlue,
                       ),
                     ),
+                    if (streakFreezesSpent > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        streakFreezesSpent == 1
+                            ? 'STREAK FREEZE USED'
+                            : '$streakFreezesSpent STREAK FREEZES USED',
+                        style: RetroText.pixel(
+                          size: 7,
+                          color: RetroColors.shieldCyan,
+                        ),
+                      ),
+                    ],
+                    if (streakFreezeEarned) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'STREAK FREEZE EARNED',
+                        style: RetroText.pixel(
+                          size: 7,
+                          color: RetroColors.shieldCyan,
+                        ),
+                      ),
+                    ],
                     // Named again on the way out: a score under a rule
                     // is only comparable to other scores under it.
                     if (engine.modifier != null) ...[
@@ -320,6 +351,30 @@ class _ProgressLines extends StatelessWidget {
               'QUEST DONE: ${quest.title}',
               textAlign: TextAlign.center,
               style: RetroText.pixel(size: 7, color: RetroColors.amber),
+            ),
+          ),
+        // A first only happens once, so it is said in full: what it is
+        // called, and what it took.
+        for (final milestone in outcome.milestonesEarned)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              children: [
+                Text(
+                  '${milestone.title}  +${milestone.xp} XP',
+                  textAlign: TextAlign.center,
+                  style: RetroText.pixel(
+                    size: 9,
+                    color: RetroColors.phosphorHot,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  milestone.blurb.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: RetroText.pixel(size: 6, color: RetroColors.metal),
+                ),
+              ],
             ),
           ),
         if (outcome.leveledUp)

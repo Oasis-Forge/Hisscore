@@ -5,6 +5,30 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- A sixth mode: TIME ATTACK. Sixty seconds on the same board on every phone,
+  with a timer ring in the corner that turns red for the last ten seconds, and
+  apples worth double when you take one within two seconds of the last. It has
+  its own all-time leaderboard.
+- Stars now ripen. One is worth 50 the moment it appears and 150 in the last
+  second before it goes, with its price written on it and a blink that gets
+  frantic near the end — so leaving it is worth points, and leaving it too long
+  is worth nothing.
+- A golden apple that runs away, in Adventure and Endless. It turns up every
+  dozen apples, pays a hundred points times your combo, and steps away from your
+  head every few ticks: you catch it by cutting it off, not by chasing it. It is
+  gone in eight seconds.
+- Hardcore now hides a poison apple among the real ones. The only tell is the
+  colour. Eating it costs three segments and your combo.
+- Adventure grows a pair of portals from level 7: go in one, come out of the
+  other still travelling the way you were.
+- Your daily streak now survives a day you miss. Every seven days in a row banks
+  a streak freeze, up to two, and one is spent by itself the next time you play
+  after a gap — the game tells you it did it rather than leaving you to wonder.
+  The daily card says how many you have in hand.
+- Twenty-one local firsts, each paying XP the once: your first pickup, a ten-apple
+  combo, a thousand apples, level 25, a thirty-day streak, five close calls in
+  one run, a run in every mode, finishing a friend's challenge. Some carry a
+  label you wear on the menu afterwards. They stay on your device.
 - The daily challenge now plays by a different rule every week, the same one
   for everybody: everything twice as fast, no walls, mirrored steering, fog
   that lights only the ground near your head, a smaller board, or food that

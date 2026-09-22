@@ -121,6 +121,14 @@ class RunEffects extends ChangeNotifier {
     particles.emitComboSparkle(cell.dx, cell.dy);
   }
 
+  /// An apple that was not one. The shake is the point: poison has to
+  /// land as something that happened to the player, not as a score
+  /// that quietly failed to go up.
+  void poisoned(GridPoint head) {
+    spawnLabel('POISON!', head, RetroColors.cherry, big: true);
+    shake.shake(intensity: 6);
+  }
+
   /// The run just passed the best score on this device.
   void newBest() {
     spawnLabel(
@@ -243,6 +251,8 @@ class RunEffects extends ChangeNotifier {
     FoodType.speedBurst => RetroColors.speedYellow,
     FoodType.shrink => RetroColors.shrinkPurple,
     FoodType.magnet => RetroColors.magnetPink,
+    FoodType.golden => RetroColors.starGold,
+    FoodType.poison => RetroColors.poison,
   };
 
   void _cancelLabelTimers() {
