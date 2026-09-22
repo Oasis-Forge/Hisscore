@@ -4,7 +4,13 @@ What's left before Hisscore can go on the Play Store and App Store, and
 what's deliberately parked. Everything here is something the repo cannot
 do for itself — it needs a device, an account, or a decision.
 
-Last reviewed: 2026-09-12.
+Last reviewed: 2026-09-22.
+
+**The release is deliberately last.** The rest of
+[ROADMAP.md](ROADMAP.md), then this file. Everything below still has to
+happen — it just happens after that work lands, so one version bump covers
+the lot. `CHANGELOG.md` is holding 18 entries under `Unreleased` in the
+meantime.
 
 ---
 
@@ -137,8 +143,10 @@ screenshots aren't real gameplay. Shot list and required sizes are in
 - [ ] Mid-run with a long snake (the one that sells it)
 - [ ] Intro screen
 - [ ] Hardcore, obstacles visible
-- [ ] Game over with the score breakdown
-- [ ] Daily challenge card showing a streak
+- [ ] Game over with the score breakdown, XP bar and a milestone line
+- [ ] Daily challenge card showing a streak and the week's rule
+- [ ] Time Attack mid-run, timer ring red
+- [ ] *(optional)* a FOG week, which is the most striking thing the game does
 - [ ] *(optional)* HOW tab with the pickup legend
 
 ### 5. iOS has never been built
@@ -193,27 +201,30 @@ no-op until a Sentry project exists.
 
 Not bugs — decisions with a reason to wait.
 
-**Daily challenge boards differ across devices.** The grid follows the
-screen, so a taller phone gets a taller board from the same seed. Only
-matters if daily scores are ever compared between players; fixing it
-means either letterboxing daily runs or pinning a fixed grid, both of
-which cost something.
-
-**Global leaderboard.** Needs a backend — Firebase Firestore with
-anonymous auth is the low-effort path. The biggest single lever for
-making the game competitive, and the main reason the daily-board issue
-above would start to matter.
-
 **Real push notifications.** Today's reminders are local and on-device.
 Server-initiated re-engagement needs FCM plus APNs credentials.
 
-**`game_page.dart` is still ~1,000 lines.** The presentational half was
-split out; what remains is orchestration (engine lifecycle, ticker,
-persistence, sound, notifications, share, daily, demo). Extracting a
-`GameSession` controller is the obvious next step, but it's a tax rather
-than a crisis.
+**Server-side score verification.** Scores are client-reported and the
+Firestore rules can only cap them. The client half is now done — `RunLog`
+records a run as a seed plus its turns and a replay recomputes the score —
+so what is left is a Cloud Function that replays it. Needs the Blaze plan.
+Tracked in ROADMAP.md phase 3.
 
-**Golden tests for the board painter.** The engine and flows are well
-covered; the rendering isn't. Two of the visual bugs this project has
-hit — the malformed lightning bolt and the jagged star — were caught by
-eye, not by a test.
+**An opt-out for score submission.** See section 2: a name and a
+pseudonymous id go up at the end of every run with no prompt. Worth having
+before wider release, not before first submission.
+
+**Golden coverage for the newer painting.** `board_golden_test.dart`
+covers the snake, pickups, obstacles, skins, effects and backdrops, but
+nothing added since: the fog, portals, the ghost, the golden apple, poison
+and the ripening star's value. This project has now had six visual bugs
+caught by eye rather than by a test.
+
+### Done since this list was written
+
+- **Daily boards differ across devices** — fixed. The daily, challenge
+  codes and Time Attack declare `SnakeEngine.fixedGrid` and are
+  letterboxed, so the same seed gives the same board everywhere.
+- **Global leaderboard** — shipped (Firebase anonymous auth + Firestore).
+- **`game_page.dart` is ~1,000 lines** — it is 598. `GameSession` was
+  extracted in #42.

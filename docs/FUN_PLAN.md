@@ -1,8 +1,13 @@
 # Hisscore: a plan to make it more fun
 
+> **Finished 2026-09-22. This file is a record, not a to-do list.** All fifteen items shipped
+> across PRs #42–#46; see the table at the bottom for where each one landed. Go to
+> [ROADMAP.md](../ROADMAP.md) for what is next. It is kept because the reasoning behind each
+> mechanic is here and nowhere else.
+
 Written 2026-09-21 from the roadmap, the handoff and a skim of the engine, not from playing it.
-It is a proposal for the next stretch of work, ordered by fun gained per effort. The roadmap
-(`ROADMAP.md`) stays the source of truth for what is done; this file says what to do next and how.
+It was a proposal for the next stretch of work, ordered by fun gained per effort. The roadmap
+(`ROADMAP.md`) stays the source of truth for what is done; this file said what to do next and how.
 
 ## How to work this plan (read first)
 
@@ -21,7 +26,7 @@ It is a proposal for the next stretch of work, ordered by fun gained per effort.
 - Mechanical passes (l10n strings, changelog, golden updates) go to Sonnet; engine and refactor
   work stays on the strong model.
 
-## What the game is today
+## What the game was before this plan (2026-09-21)
 
 Retro Snake, five modes (Classic, Adventure with levels and backdrops, Endless wrap, Hardcore 2x
 with obstacles, Zen invulnerable). Six pickups: apple, star, shield, speed burst, shrink, magnet.

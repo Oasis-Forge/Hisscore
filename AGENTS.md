@@ -2,7 +2,7 @@
 
 ## Product
 
-Hisscore is a single Flutter app (retro Snake) in `Hisscore/`. There is no backend. Core play is local: move, eat, score, game over, local high score.
+Hisscore is a single Flutter app (retro Snake) in `Hisscore/`. Core play is entirely local: move, eat, score, game over, local high score, and all progression. The one server-side piece is a global leaderboard on Firebase (anonymous auth + Firestore) — see [CLAUDE.md](CLAUDE.md) and [docs/LEADERBOARD.md](docs/LEADERBOARD.md). It is absent and harmless in a checkout without `google-services.json`, which is the usual case on a Cloud Agent.
 
 ## Cursor Cloud specific instructions
 
@@ -24,4 +24,6 @@ The web-server process is a long-running `terminals` job, not an install step. A
 
 `flutter run -d chrome` needs a display. Prefer `web-server` plus a browser against port 8080 in this environment.
 
-Widget tests use Flutter's fake clock: `tester.pump(Duration)` advances Snake ticks (240ms each by default). The first apple is 4 cells ahead of the starting snake, so a score of `00010` appears after about 960ms of pumped time.
+Widget tests use Flutter's fake clock: `tester.pump(Duration)` advances Snake ticks (**190ms** each by default, not 240 — the tick was shortened in #26). The first apple is 4 cells ahead of the starting snake, so a score of `00010` appears after about 760ms of pumped time. A death then takes a further `RunEffects.deathPause` (400ms) of slow motion before the game-over card appears.
+
+Note that web is **not** a supported target for the product any more (see the decisions log in [ROADMAP.md](ROADMAP.md)); it remains the only practical way to run the app in this environment, but anything to do with audio, haptics, the share sheet or notifications cannot be judged here, and neither can a release build. Say in the PR what was only compiled.
