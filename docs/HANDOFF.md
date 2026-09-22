@@ -215,9 +215,26 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 - **A dialog that owns a `TextEditingController` must dispose it in its own `State`**, not from the
   caller after `showDialog` returns. Doing it from the caller crashed the app on the device
   (`used after being disposed`) and *the widget tests did not catch it*. See `EnterCodeDialog`.
-- **Goldens** use a small tolerance (`board_golden_test.dart`) so ones generated on Windows pass on
-  Linux CI. Regenerate with `flutter test test/board_golden_test.dart --update-goldens`, then look at
-  the PNGs.
+- **Goldens** use a small tolerance (`test/support/tolerant_goldens.dart`) so ones generated on
+  Windows pass on Linux CI. Regenerate with
+  `flutter test test/board_golden_test.dart --update-goldens`, then look at the PNGs. Three things
+  about them are easy to get wrong, and #50 got all three:
+  - **Capture a `RepaintBoundary` of your own**, keyed with `goldenBoundary`, under a `Center`.
+    `find.byType(RepaintBoundary).first` is the framework's boundary around the whole 800x600 test
+    view, so every golden comes out that size no matter what the widget under it asked for — the
+    `SizedBox` in the old helper had never had any effect at all.
+  - **The tolerance is a blind spot for small things.** It is a percentage, so anything under about
+    half a percent of the image can change without failing. Six-point text is always under it: a
+    golden with a number in it pins the picture, not the number. Pin the number in an ordinary test.
+  - **But a small canvas is not the way out**, because the drift the tolerance exists for is
+    *absolute*. The pixels antialiasing and font hinting move between Windows and Linux are a fixed
+    handful — about 60 for a small widget. On 800x600 that is 0.01% and invisible; on 60x60 it is
+    1.7% and CI goes red. **Goldens want a big canvas.** Anything too small to be worth a big one is
+    better pinned by reading the widget tree: `hud_widgets_test.dart` asserts the timer ring's
+    colour, number and fill straight off the widgets, which is platform-proof and sharper than a
+    pixel count. A colour is not something only a golden can see.
+- **Text in a golden needs `loadPixelFont()`** (`test/support/pixel_font.dart`). Without it the
+  engine falls back to the test font, which draws every glyph as an identical box.
 - **The pixel font `PressStart2P` has almost no glyphs beyond ASCII.** No check marks or emoji in UI
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
   first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.

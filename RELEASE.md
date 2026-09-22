@@ -216,14 +216,16 @@ in-app "take me off the boards" that actually deletes the row — rather
 than just stopping future ones, which is what the STATS toggle does —
 would be better, and the Data safety form asks about it.
 
-**Golden coverage for the newer painting.** `board_golden_test.dart`
-covers the snake, pickups, obstacles, skins, effects and backdrops, but
-nothing added since: the fog, portals, the ghost, the golden apple, poison
-and the ripening star's value. This project has now had six visual bugs
-caught by eye rather than by a test.
-
 ### Done since this list was written
 
+- **Golden coverage for the newer painting** — done 2026-09-22 (#50). The
+  fog, portals, the ghost, the golden apple, poison and the ripening
+  star's price all have one now. The ghost goldens fail by 1.3-1.5% with
+  its slide removed, so the bug that shipped would now be caught before a
+  phone saw it. Seven visual bugs had been found by eye and none by a
+  test; that was the argument for doing this first. Time Attack's timer
+  ring is covered by `hud_widgets_test.dart` instead — it is too small for
+  a golden to be both sensitive and portable.
 - **Daily boards differ across devices** — fixed. The daily, challenge
   codes and Time Attack declare `SnakeEngine.fixedGrid` and are
   letterboxed, so the same seed gives the same board everywhere.
