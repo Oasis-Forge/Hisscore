@@ -69,24 +69,24 @@ as a bar, best combo, apples, close calls, the XP bar animating from old to new,
 ticking up, and when the board answered, "12 points behind #8 on the daily". PLAY AGAIN is the primary
 button; mode change is secondary. This is the screen that decides whether the next run happens.
 
-**B3. Streak freeze.** One freeze earned per 7-day daily streak, at most 2 banked, spent
+**DONE — B3. Streak freeze.** One freeze earned per 7-day daily streak, at most 2 banked, spent
 automatically on a missed day, shown as a count on the daily tab. Tests in `daily_challenge_test.dart`
 for the rollover with and without a freeze.
 
-**B4. Milestones.** About twenty local firsts, each paying XP once with a toast: first star, 10 combo,
+**DONE — B4. Milestones.** About twenty local firsts, each paying XP once with a toast: first star, 10 combo,
 level 10, 100 apples lifetime, 5 close calls in one run, a 7-day streak, one run in every mode, beat
 a challenge code. Some grant a title shown on the menu card (titles stay local; board names are
 validated by the Firestore rules). Test the pure function `milestonesEarned(before, after)`.
 
 ## Phase C: variety (every day feels different)
 
-**C1. Risk/reward pickups.** A ripening star: worth 50 when it appears, growing to 150 just before it
+**DONE — C1. Risk/reward pickups.** A ripening star: worth 50 when it appears, growing to 150 just before it
 despawns, blinking faster near the end, current value drawn on it. A fleeing golden apple in Adventure
 and Endless: appears every N apples, worth 100 x combo, moves one cell away from the head every 3
 ticks, gone after 8 s. Engine tests for the value curve and the flee rule; goldens for both sprites.
 One PR, or two if the diff grows.
 
-**C2. Poison apple (Hardcore only) and portals (Adventure level 7+).** Poison looks like an apple with a
+**DONE — C2. Poison apple (Hardcore only) and portals (Adventure level 7+).** Poison looks like an apple with a
 darker tint as its tell; eating it loses 3 segments, resets the combo and shakes the screen. Portals are
 paired tiles; the head enters one and leaves the other keeping its direction, the body follows. Two
 PRs. Both need engine tests and goldens.
@@ -96,7 +96,7 @@ walls, mirrored controls, fog (only cells within 5 of the head drawn), tiny boar
 madness. Named on the daily tab and the share card. Tests: the modifier for a week is deterministic,
 and each flag has an engine test. Cheap, because the daily is already seeded and fixed-size.
 
-**C4. Time Attack.** 60 seconds on the fixed daily grid so scores compare across phones; apples eaten
+**DONE — C4. Time Attack.** 60 seconds on the fixed daily grid so scores compare across phones; apples eaten
 within 2 s of the last are worth double; a timer ring in the HUD; its own `alltime-timeattack` board.
 The menu's mode chips go from 3+2 to 3+3. Check `firebase/firestore.rules` for a board id allowlist
 before adding the board.
@@ -108,12 +108,12 @@ persistence, quests and online submit move to a controller; goldens and widget t
 unchanged; the page drops well under 600 lines. The roadmap asks for this before phase 5, and D2, D3
 and server verification all hook into it.
 
-**D2. Input log per run.** The engine records `(tick, direction)` pairs; seed plus log replays a run
+**DONE — D2. Input log per run.** The engine records `(tick, direction)` pairs; seed plus log replays a run
 deterministically. Test: a replay reproduces the score and the final board exactly. Keep the best
 daily run's log locally, compact. This is also the prerequisite the roadmap names for server-side
 verification.
 
-**D3. Ghost race.** On the daily, draw the player's best run as a translucent ghost snake and show
+**DONE — D3. Ghost race.** On the daily, draw the player's best run as a translucent ghost snake and show
 "beat your ghost" on the tab. A friend's ghost through a code comes later and needs storage and rules.
 
 After D3 the roadmap items follow naturally: server verification, tappable seed links, ads.
@@ -135,15 +135,28 @@ After D3 the roadmap items follow naturally: server verification, tappable seed 
 | 4 | B2 end-of-run screen | minor | #42, fixed in #43 |
 | 5 | B1 second chance | minor | #42, fixed in #43 |
 | 6 | C3 weekly modifier | minor | #44 |
-| 7 | B3 streak freeze, then B4 milestones | minor each | |
-| 8 | C1, then C2 (two PRs) | minor each | |
-| 9 | C4 Time Attack | minor | |
-| 10 | D1, D2, D3 in order | D1 patch, others minor | D1 in #42 |
+| 7 | B3 streak freeze, then B4 milestones | minor each | #45 |
+| 8 | C1, then C2 (two PRs) | minor each | #45 |
+| 9 | C4 Time Attack | minor | #45 |
+| 10 | D1, D2, D3 in order | D1 patch, others minor | D1 in #42, D2+D3 in #46 |
 
-Phases A and D1 went out as one PR (#42) rather than five, and the
-version bumps were collected instead of taken per PR: the whole fun
-track is meant to be one release. A3 haptics shipped with it and is
-still unverified on real hardware, per the note above.
+**All fifteen have shipped.** What is left of this plan is the release
+itself: a version bump, the `Unreleased` section of `CHANGELOG.md`
+finalised, a local `flutter build appbundle --release` copied into
+`Hisscore/dist/` and signer-checked, and the store notes. `RELEASE.md`
+holds the pre-launch items only a person can do.
+
+Where the work departed from the plan:
+
+- Phases A and D1 went out as one PR (#42) rather than five, B3–C4 as
+  one PR (#45) rather than four, and D2+D3 as one (#46). The per-PR
+  version bumps were collected instead of taken each time, because the
+  whole fun track is meant to be one release.
+- A3 haptics shipped and is still unverified on real hardware, per the
+  note above. So are the golden apple, poison and portals: all three
+  are too deep into a run to reach by hand through adb.
+- The balance work below — death-cause stats and median run length —
+  was never started.
 
 A3 haptics and the balance stats fit anywhere a phone is available. Stop and reorder if playing the
 game on a real phone says otherwise; nothing above has been tested against a player.
