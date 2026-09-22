@@ -279,6 +279,62 @@ class SnakeEngine {
   /// shake for it.
   bool atePoison = false;
 
+  // ─── Greed ────────────────────────────────────────
+
+  /// The modes that play with a greed pot.
+  ///
+  /// Endless alone, deliberately. Classic is meant to stay the original
+  /// game; Adventure and Time Attack already tell the player when to
+  /// push, one through levels and one through a clock; Hardcore's whole
+  /// risk is that everything kills you; and Zen has nothing to trade,
+  /// because nothing there can be lost. Endless is the mode with only
+  /// survival in it, which makes it the one that wants a reason to keep
+  /// going rather than cash out.
+  static const greedModes = {GameMode.endless};
+
+  bool get greedEnabled => greedModes.contains(mode);
+
+  /// Points riding on the next bank, and what they would be multiplied
+  /// by if one were taken right now.
+  ///
+  /// The pot is *winnings on top*: an apple pays the score exactly what
+  /// it always did and drops a second copy of those points in here. So
+  /// greed never risks a point the player would have had without it —
+  /// only what it added. A mechanic that could leave a run worse off
+  /// than not playing it is a mechanic nobody picks, and Endless is a
+  /// mode people already have reasons to avoid.
+  int pot = 0;
+  double greed = 1.0;
+
+  /// Every apple is worth this much more on the pot than the last.
+  static const double greedStep = 0.25;
+
+  /// Where greed stops climbing. Four apples' worth of patience already
+  /// makes a bank the biggest single thing in a run; past that the
+  /// number stops meaning anything and the player is just waiting.
+  static const double greedMax = 4.0;
+
+  /// Banked over the whole run, for the card at the end.
+  int greedBanked = 0;
+
+  /// What the bank just paid. One tick long, like [justAte], so the
+  /// board can throw the number up.
+  int justBanked = 0;
+
+  /// A bank turns up every this many apples, counted rather than rolled
+  /// for: a player watching the pot climb should be able to feel one
+  /// coming and decide whether to wait for it.
+  static const int bankEveryApples = 5;
+
+  /// Longer than an ordinary pickup lives. A bank is the whole point of
+  /// the mechanic, and one that expires before a long snake can cross
+  /// the board would make greed a dice roll rather than a decision.
+  static const int bankLifetimeMs = 9000;
+
+  /// The apple count the last bank was spawned at, so eating something
+  /// else on a multiple of [bankEveryApples] cannot conjure a second.
+  int _lastBankAtApples = -1;
+
   // ─── Time Attack ──────────────────────────────────
 
   /// How long a timed run lasts.
@@ -448,6 +504,13 @@ class SnakeEngine {
     ateQuickly = false;
     portals = portalsForLevel(level);
 
+    // Greed
+    pot = 0;
+    greed = 1.0;
+    greedBanked = 0;
+    justBanked = 0;
+    _lastBankAtApples = -1;
+
     // Food
     foods = [];
     lastEatenFood = null;
@@ -520,6 +583,7 @@ class SnakeEngine {
     justSurvivedCloseCall = false;
     atePoison = false;
     ateQuickly = false;
+    justBanked = 0;
     // Whether the tick about to run is the one the snake was given to
     // save itself. Read before the flag is cleared for this tick.
     final wasHeld = graceHeld;
@@ -598,6 +662,7 @@ class SnakeEngine {
 
       // Maybe spawn a bonus food.
       _maybeSpawnGoldenApple();
+      _maybeSpawnBank();
       _maybeSpawnBonusFood();
     } else {
       snake.removeLast();
@@ -669,6 +734,14 @@ class SnakeEngine {
 
     comboCount = 0;
     lastEatMs = -comboWindowMs - 1;
+
+    // The pot goes with the combo and the segments. Endless is one of
+    // the two modes a second chance is offered in, so a revive that
+    // handed the pot back would make greed free in the only mode that
+    // has it — and free greed is not greed.
+    pot = 0;
+    greed = 1.0;
+
     inputQueue.clear();
     graceSpent = false;
     graceHeld = false;
@@ -765,6 +838,7 @@ class SnakeEngine {
                     (ateQuickly ? 2 : 1))
                 .round();
         score += points;
+        _feedPot(points);
         _updateCombo();
         _checkSpeedIncrease();
         _checkLevelAdvance();
@@ -811,7 +885,32 @@ class SnakeEngine {
       case FoodType.magnet:
         magnetUntilMs = elapsedMs + magnetMs;
         score += (10 * scoreMultiplier).round();
+
+      case FoodType.bank:
+        justBanked = (pot * greed).round();
+        score += justBanked;
+        greedBanked += justBanked;
+        pot = 0;
+        greed = 1.0;
     }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Greed
+  // ═══════════════════════════════════════════════════
+
+  /// Drops a copy of what an apple just paid into the pot, and makes
+  /// the next bank worth a little more.
+  ///
+  /// The copy is of [points] rather than [pointsPerFood], so the pot
+  /// inherits the combo and the mode multiplier the apple was scored
+  /// with. Greed and the combo then pull the same way — which is the
+  /// point, because a pot that ignored the combo would ask the player
+  /// to choose between the two systems instead of riding both.
+  void _feedPot(int points) {
+    if (!greedEnabled) return;
+    pot += points;
+    greed = min(greedMax, greed + greedStep);
   }
 
   // ═══════════════════════════════════════════════════
@@ -994,6 +1093,32 @@ class SnakeEngine {
         type: FoodType.golden,
         spawnMs: elapsedMs,
         lifetimeMs: goldenLifetimeMs,
+      ),
+    );
+  }
+
+  /// A bank every [bankEveryApples] apples — but only ever when there
+  /// is something to put in it.
+  ///
+  /// Spawning one over an empty pot would put a pickup worth exactly
+  /// nothing on the board, and a pickup that has paid nothing before is
+  /// one the player learns to ignore. Since it is the only way the pot
+  /// is ever kept, that is the one lesson this must not teach.
+  void _maybeSpawnBank() {
+    if (!greedEnabled) return;
+    if (pot <= 0) return;
+    if (totalApplesEaten == _lastBankAtApples) return;
+    if (totalApplesEaten % bankEveryApples != 0) return;
+    if (foods.any((f) => f.type == FoodType.bank)) return;
+    final pos = _spawnFood();
+    if (pos == null) return;
+    _lastBankAtApples = totalApplesEaten;
+    foods.add(
+      FoodItem(
+        position: pos,
+        type: FoodType.bank,
+        spawnMs: elapsedMs,
+        lifetimeMs: bankLifetimeMs,
       ),
     );
   }

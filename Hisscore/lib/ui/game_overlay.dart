@@ -133,6 +133,12 @@ class GameOverlay extends StatelessWidget {
                     const SizedBox(height: 14),
                     ScoreVsBest(score: engine.score, best: highScore),
                   ],
+                  // Only worth a line if greed was actually played: a
+                  // run that never held a pot has nothing to report.
+                  if (engine.greedBanked > 0 || engine.pot > 0) ...[
+                    const SizedBox(height: 12),
+                    GreedResult(banked: engine.greedBanked, lost: engine.pot),
+                  ],
                   if (standing != null) ...[
                     const SizedBox(height: 12),
                     BoardStanding(standing: standing!),

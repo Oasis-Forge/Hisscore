@@ -58,7 +58,7 @@ class GameHud extends StatelessWidget {
   }
 
   /// Only what is currently true: the level in Adventure, a live combo,
-  /// and any power-up actually running.
+  /// an unbanked pot in Endless, and any power-up actually running.
   Widget _buildStatusChips() {
     return Wrap(
       alignment: WrapAlignment.center,
@@ -74,6 +74,21 @@ class GameHud extends StatelessWidget {
             value: '×${engine.comboMultiplier.toStringAsFixed(1)}',
             color: RetroColors.combo,
           ),
+        // Both or neither: the apple that fills the pot is the apple
+        // that raises greed, so a pot with nothing in it has no
+        // multiplier to report either.
+        if (engine.pot > 0) ...[
+          MiniStat(
+            label: 'POT',
+            value: engine.pot.toString(),
+            color: RetroColors.bankOrange,
+          ),
+          MiniStat(
+            label: 'GREED',
+            value: '×${engine.greed.toStringAsFixed(2)}',
+            color: RetroColors.bankOrange,
+          ),
+        ],
         if (engine.hasShield)
           const MiniStat(label: '', value: '🛡', color: RetroColors.shieldCyan),
         if (engine.magnetActive)

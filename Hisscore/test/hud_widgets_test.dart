@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:math';
+
+import 'package:hisscore/game/food_types.dart';
+import 'package:hisscore/game/snake_engine.dart';
+import 'package:hisscore/ui/game_hud.dart';
 import 'package:hisscore/ui/hud_widgets.dart';
 import 'package:hisscore/ui/theme.dart';
 
@@ -83,5 +88,59 @@ void main() {
     await _pumpRing(tester, fraction: -0.2, seconds: 0);
     expect(_ring(tester).value, 0.0);
     expect(_ringColor(tester), RetroColors.cherry);
+  });
+
+  // Read off the tree for the same reason as the ring above: these are
+  // 6pt labels over an 11pt number, far too small a share of any golden
+  // big enough to survive two platforms.
+  group('the greed chips', () {
+    Future<void> pumpHud(WidgetTester tester, SnakeEngine engine) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GameHud(engine: engine, highScore: 0, onPause: () {}),
+          ),
+        ),
+      );
+    }
+
+    SnakeEngine endless() => SnakeEngine(
+      mode: GameMode.endless,
+      firstFoodDistance: 99,
+      random: Random(3),
+    )..start();
+
+    testWidgets('stay off the band until there is a pot', (tester) async {
+      await pumpHud(tester, endless());
+      expect(find.text('POT'), findsNothing);
+      expect(find.text('GREED'), findsNothing);
+    });
+
+    testWidgets('report the pot and what it would pay', (tester) async {
+      final engine = endless();
+      final ahead = engine.head + engine.direction.delta;
+      engine.foods = [FoodItem(position: ahead, type: FoodType.apple)];
+      engine.tick();
+
+      await pumpHud(tester, engine);
+      expect(find.text('POT'), findsOneWidget);
+      expect(find.text(engine.pot.toString()), findsOneWidget);
+      expect(find.text('GREED'), findsOneWidget);
+      expect(find.text('×1.25'), findsOneWidget);
+    });
+
+    testWidgets('and go quiet again once it is banked', (tester) async {
+      final engine = endless();
+      for (final type in [FoodType.apple, FoodType.bank]) {
+        final ahead = engine.head + engine.direction.delta;
+        engine.foods = [FoodItem(position: ahead, type: type)];
+        engine.tick();
+      }
+      expect(engine.greedBanked, greaterThan(0));
+
+      await pumpHud(tester, engine);
+      expect(find.text('POT'), findsNothing);
+      expect(find.text('GREED'), findsNothing);
+    });
   });
 }

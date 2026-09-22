@@ -153,6 +153,16 @@ Key engine details worth knowing before changing behavior:
   position. **Beware in tests**: the engine puts a primary apple back the
   moment it notices there is none, so `foods.first` may not be what you
   put there — select by type.
+- **Greed** (Endless only, `greedModes`). An apple pays `score` exactly
+  what it always did *and* drops a second copy of those points into
+  `pot`, while `greed` climbs by `greedStep` to a `greedMax` of ×4. The
+  pot is only ever kept by eating a `FoodType.bank`, which appears every
+  `bankEveryApples` apples and only while there is a pot to put in it;
+  death takes the pot, and so does `revive()`, alongside the segments and
+  the combo. **The pot is winnings on top** — the invariant is that a run
+  scores at least what the same run would have scored with greed off, so
+  the mechanic is a bet and never a tax. Keep it that way: pay the score
+  first, feed the pot second.
 - **Daily challenge** (`lib/game/daily_challenge.dart`) seeds the
   `Random` from the day number so the board is reproducible per-day, and
   plays on a fixed grid (`SnakeEngine.fixedGrid`, letterboxed by the

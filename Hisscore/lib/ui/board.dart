@@ -622,6 +622,40 @@ class SnakeBoardPainter extends CustomPainter {
           ),
           tipPaint,
         );
+
+      case FoodType.bank:
+        // A safe: a square with a dial on it. Square on purpose — the
+        // apple, the golden apple and the poison apple are all discs of
+        // about this size, and at fifteen pixels the silhouette is the
+        // only thing that reads before the colour does. A round bank was
+        // drawn first and looked like a no-entry sign among the fruit.
+        final s = r * foodScale;
+        canvas.drawCircle(
+          center,
+          s * 1.4,
+          Paint()
+            ..color = RetroColors.bankOrange.withValues(alpha: 0.18)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: center, width: s * 2, height: s * 2),
+            Radius.circular(s * 0.3),
+          ),
+          Paint()..color = RetroColors.bankOrange,
+        );
+        // The dial, off to one side so the thing has a hinge side and a
+        // handle side rather than reading as a framed circle.
+        canvas.drawCircle(
+          center.translate(s * 0.22, 0),
+          s * 0.42,
+          Paint()..color = RetroColors.voidBg,
+        );
+        canvas.drawCircle(
+          center.translate(s * 0.22, 0),
+          s * 0.16,
+          Paint()..color = RetroColors.bankOrange,
+        );
     }
 
     // Timed food: blink when about to expire, and faster the closer it

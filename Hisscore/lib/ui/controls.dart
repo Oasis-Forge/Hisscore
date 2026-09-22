@@ -343,6 +343,7 @@ class FoodLegend extends StatelessWidget {
     // Deliberately close to the apple: the tint is the whole tell, and
     // a poison apple that announced itself would not be one.
     FoodType.poison => RetroColors.poison,
+    FoodType.bank => RetroColors.bankOrange,
   };
 
   @override

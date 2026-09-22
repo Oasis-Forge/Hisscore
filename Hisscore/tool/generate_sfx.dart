@@ -107,6 +107,21 @@ void main() {
     'poison',
     _tones([for (var i = 0; i < 7; i++) _Tone(420 - i * 45, 44, _Wave.square)]),
   );
+  // The bank: coins going in. Pairs bouncing up rather than a clean run,
+  // so it does not sound like the golden apple, then a long top note —
+  // the only sound in the game that says a thing has been *kept*.
+  _write(
+    'bank',
+    _tones([
+      _Tone(784, 34, _Wave.square),
+      _Tone(1047, 34, _Wave.square),
+      _Tone(880, 34, _Wave.square),
+      _Tone(1175, 34, _Wave.square),
+      _Tone(988, 34, _Wave.square),
+      _Tone(1319, 34, _Wave.square),
+      _Tone(1760, 220, _Wave.square),
+    ]),
+  );
 
   stdout.writeln('Wrote assets/sfx/*.wav');
 
