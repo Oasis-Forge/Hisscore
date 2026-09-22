@@ -94,6 +94,19 @@ list, so a plugin cannot quietly add one behind the store listing.
 `ci.yaml` is the only workflow. There is no release workflow: nothing is
 tagged or released from GitHub (see Release process).
 
+### `main` is protected — branch as soon as you have pulled
+
+Every change goes through a pull request. All three CI jobs above must
+pass before it can merge, and force pushes and branch deletions are
+refused. **The rule is enforced for admins too**, on purpose: an owner
+token would otherwise walk straight past it, which is exactly how one
+commit reached `main` directly (2026-09-22) without anyone reviewing it.
+
+So `git checkout -b <branch>` belongs immediately after the `git pull`
+on `main`, not later when there is something to commit — the gap between
+those two is the whole failure mode. A direct push now fails with
+`protected branch hook declined`.
+
 ## Architecture
 
 ### Engine / UI split

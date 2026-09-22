@@ -12,16 +12,18 @@ daily challenge with a weekly rule and a ghost to race, friend challenge codes, 
 and levels, local milestones, unlockable themes and skins, music, haptics, and a global leaderboard
 on Firebase.
 
-- **Roadmap:** phases 1, 2 and 4 done. Phase 3 done except server-side verification, seed links and
-  making all-time boards comparable. Phase 5 is two of five (Time Attack and ghost race shipped;
-  the three multiplayer items have not started). See ROADMAP.md.
-- **Code:** `main` is green. **454 tests in 33 files.** CI runs a format check, analyze, tests, an
-  Android release build and a web build on every PR.
+- **Roadmap:** phases 1, 2 and 4 done. Phase 3 done except server-side verification. Phase 5 is
+  three of five — Time Attack, the ghost race and async head-to-head have shipped; Battle Royale and
+  local 2-player have not started. See ROADMAP.md.
+- **Code:** `main` is green and **protected** (section 6). **551 tests in 41 files.** CI runs a
+  format check, analyze, tests, an Android release build and a web build on every PR.
 - **The fun track is complete.** All fifteen items of [FUN_PLAN.md](FUN_PLAN.md) shipped across PRs
-  #42–#46. That plan is now a record, not a to-do list.
+  #42–#46. That plan is now a record, not a to-do list. Since then: docs and the handoff (#47, #49),
+  the leaderboard opt-in and comparable all-time boards (#48), golden coverage for the newer
+  painting (#50), challenge links (#51) and racing a friend (commit `e89e00b`).
 - **Nothing is released, and nothing releases from GitHub.** Version is still `1.0.1+2` — the whole
   fun track is meant to go out as one release, so the bumps were collected rather than taken per PR.
-  `CHANGELOG.md` has 18 player-facing entries waiting under `Unreleased`. There are no tags and no
+  `CHANGELOG.md` has 22 player-facing entries waiting under `Unreleased`. There are no tags and no
   GitHub Releases: that machinery was removed on 2026-09-20 because everything CI can build is
   debug-signed and Play rejects it. Releases are built locally and uploaded by hand (section 8).
 - **Not verified by a person on a real phone:** sound, haptics, the rating prompt. Share,
@@ -37,7 +39,7 @@ cd Hisscore/Hisscore                                        # the app lives in t
 flutter pub get
 flutter analyze                                             # must be clean
 dart format --output=none --set-exit-if-changed .           # CI's format check
-flutter test                                                # all 454 should pass
+flutter test                                                # all 551 should pass
 ```
 
 - **Flutter 3.44.8, pinned in CI** (`FLUTTER_VERSION` in `.github/workflows/ci.yaml`). Use the same
@@ -176,6 +178,14 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 
 - **Package id:** `com.oasisforge.<appname>` for every app. Hisscore was renamed from
   `com.hisscore.hisscore` before it was ever published. Once an id is on Play it can never change.
+- **`main` is protected: branch the moment you have pulled, not when you are ready to commit.**
+  A pull request is required, the three CI checks must pass, and force pushes and deletions are
+  refused — **including for admins**, deliberately, because the one direct push that got through
+  (commit `e89e00b`, 2026-09-22) carried an owner token and nothing else would have stopped it. The gap
+  between `git pull` on `main` and `git checkout -b` is where that happened, which is why the rule
+  is "branch after the pull" rather than "branch before the PR". A direct push now fails with
+  `protected branch hook declined`. To inspect or change it:
+  `gh api repos/Oasis-Forge/Hisscore/branches/main/protection`.
 - **One theme per PR, branched from a freshly pulled `main`.** Add files by path
   (`git add Hisscore/lib ...`) rather than `git add -A` when Flutter has rewritten
   `Hisscore/linux/flutter/generated_*` locally. `Hisscore/pubspec.lock` is *not* noise: if you

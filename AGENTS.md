@@ -27,3 +27,15 @@ The web-server process is a long-running `terminals` job, not an install step. A
 Widget tests use Flutter's fake clock: `tester.pump(Duration)` advances Snake ticks (**190ms** each by default, not 240 — the tick was shortened in #26). The first apple is 4 cells ahead of the starting snake, so a score of `00010` appears after about 760ms of pumped time. A death then takes a further `RunEffects.deathPause` (400ms) of slow motion before the game-over card appears.
 
 Note that web is **not** a supported target for the product any more (see the decisions log in [ROADMAP.md](ROADMAP.md)); it remains the only practical way to run the app in this environment, but anything to do with audio, haptics, the share sheet or notifications cannot be judged here, and neither can a release build. Say in the PR what was only compiled.
+
+## Git
+
+`main` is protected. Every change goes through a pull request, all three
+CI jobs must pass before it can merge, and force pushes and branch
+deletions are refused — for admins as well, on purpose.
+
+**Branch as soon as you have pulled**, not when you are ready to commit:
+`git checkout -b <branch>` belongs on the line after `git pull` on
+`main`. The gap between those two is where a commit once reached `main`
+directly without review (2026-09-22). A direct push now fails with
+`protected branch hook declined`.
