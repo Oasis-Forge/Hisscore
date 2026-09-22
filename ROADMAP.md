@@ -23,7 +23,7 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
 - [x] Share card: PNG of the final board with score and mode, text as caption and fallback (#20)
 - [x] Golden tests for the board painter: snake, pickups, obstacles, skins, effects, backdrops (#20 and
       later), and everything the fun track added — fog, portals, the ghost, the golden apple, poison,
-      the ripening star's price, the Time Attack ring (#50)
+      the ripening star's price (#50)
 - [~] PWA: manifest, icons and Flutter's service worker already existed; added theme-color, viewport,
       iOS standalone meta and a dark page background (#20). Install and offline never tried on a device.
       Web is no longer a target (see HANDOFF).
