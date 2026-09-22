@@ -9,7 +9,7 @@ Last reviewed: 2026-09-22.
 **The release is deliberately last.** The rest of
 [ROADMAP.md](ROADMAP.md), then this file. Everything below still has to
 happen — it just happens after that work lands, so one version bump covers
-the lot. `CHANGELOG.md` is holding 18 entries under `Unreleased` in the
+the lot. `CHANGELOG.md` is holding 22 entries under `Unreleased` in the
 meantime.
 
 ---

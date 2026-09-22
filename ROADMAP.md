@@ -13,7 +13,7 @@ shipped all fifteen of its items across PRs #42–#46. It closed out the whole o
 phase 5, the last of phase 2's juice, and the cross-cutting `GameSession` refactor. That plan is
 now a record rather than a to-do list; this file is the source of truth again.
 
-**Nothing has been released yet.** Version is still `1.0.1+2` and `CHANGELOG.md` holds 18 entries
+**Nothing has been released yet.** Version is still `1.0.1+2` and `CHANGELOG.md` holds 22 entries
 under `Unreleased`: the whole fun track is meant to go out as one release. The agreed order is
 **the rest of this roadmap, then the release** — see section 9 of the handoff.
 
@@ -86,7 +86,8 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
 - [x] Time Attack (60 seconds) on the fixed grid, with a double-score window and its own board (#45)
 - [x] Ghost race from a recorded replay (#46) — the same input log server verification needs
 - [ ] Battle Royale: shrinking arena with AI snakes
-- [x] Async head-to-head on a shared seed (#52). The sender's run rides inside the link as a
+- [x] Async head-to-head on a shared seed (commit `e89e00b` — pushed straight to `main` by mistake,
+      which is why `main` is protected now and why this line names a commit rather than a PR). The sender's run rides inside the link as a
       delta-encoded list of turns — about 300 characters for a long run — so the friend who opens it
       races their snake on the same board and gets a VS card at the end. **No server**: the run is in
       the link, and neither player has to be online, let alone online at once. It is the same
