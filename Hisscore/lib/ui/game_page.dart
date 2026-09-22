@@ -540,9 +540,14 @@ class _GamePageState extends State<GamePage>
     // The card waits out the slow-motion beat: covering the board on
     // the same frame as the death hides the one thing the player wants
     // to see.
+    // A revive parks the engine in `paused` while the player is counted
+    // back in. That is not a pause the player asked for, so the card —
+    // and its live RESUME and MENU buttons under the see-through
+    // countdown — has no business being there.
     final showOverlay =
-        engine.phase == GamePhase.paused ||
-        (engine.phase == GamePhase.gameOver && !effects.dying);
+        session.resumeCountdown == 0 &&
+        (engine.phase == GamePhase.paused ||
+            (engine.phase == GamePhase.gameOver && !effects.dying));
     return GameBoardView(
       engine: engine,
       pulse: pulse,
