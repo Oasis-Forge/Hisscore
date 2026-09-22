@@ -215,9 +215,20 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 - **A dialog that owns a `TextEditingController` must dispose it in its own `State`**, not from the
   caller after `showDialog` returns. Doing it from the caller crashed the app on the device
   (`used after being disposed`) and *the widget tests did not catch it*. See `EnterCodeDialog`.
-- **Goldens** use a small tolerance (`board_golden_test.dart`) so ones generated on Windows pass on
-  Linux CI. Regenerate with `flutter test test/board_golden_test.dart --update-goldens`, then look at
-  the PNGs.
+- **Goldens** use a small tolerance (`test/support/tolerant_goldens.dart`, shared by
+  `board_golden_test.dart` and `hud_golden_test.dart`) so ones generated on Windows pass on Linux CI.
+  Regenerate with `flutter test test/board_golden_test.dart --update-goldens`, then look at the PNGs.
+  Two things about them are easy to get wrong:
+  - **Capture a `RepaintBoundary` of your own**, keyed with `goldenBoundary`, under a `Center`.
+    `find.byType(RepaintBoundary).first` is the framework's boundary around the whole 800x600 test
+    view, so every golden comes out that size no matter what the widget under it asked for. That
+    quietly made a 34px timer ring 0.02% of its image — inside the tolerance, so a colour change
+    would not have failed it.
+  - **The tolerance is a real blind spot for small things.** Anything smaller than about half a
+    percent of the image can change without failing. Six-point text is always under it, so a golden
+    with a number in it pins the picture, not the number; pin the number in an ordinary test.
+- **Text in a golden needs `loadPixelFont()`** (`test/support/pixel_font.dart`). Without it the
+  engine falls back to the test font, which draws every glyph as an identical box.
 - **The pixel font `PressStart2P` has almost no glyphs beyond ASCII.** No check marks or emoji in UI
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
   first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.
