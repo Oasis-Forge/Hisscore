@@ -24,6 +24,7 @@ class IntroPanel extends StatelessWidget {
     required this.dailyState,
     required this.playedDailyToday,
     required this.onStartDaily,
+    this.ghostScore,
     required this.onNewChallenge,
     required this.onEnterCode,
     required this.online,
@@ -51,6 +52,9 @@ class IntroPanel extends StatelessWidget {
   final DailyState dailyState;
   final bool playedDailyToday;
   final VoidCallback onStartDaily;
+
+  /// The score of the best run kept for today's board, if there is one.
+  final int? ghostScore;
   final VoidCallback onNewChallenge;
   final VoidCallback onEnterCode;
   final OnlineScoreBoard online;
@@ -108,6 +112,7 @@ class IntroPanel extends StatelessWidget {
                       dailyState: dailyState,
                       playedDailyToday: playedDailyToday,
                       onStartDaily: onStartDaily,
+                      ghostScore: ghostScore,
                       onNewChallenge: onNewChallenge,
                       onEnterCode: onEnterCode,
                       questSummary:

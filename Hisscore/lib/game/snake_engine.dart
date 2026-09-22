@@ -35,6 +35,10 @@ enum Direction {
   };
 }
 
+/// One steer, and the tick it landed on. The unit a run is recorded
+/// in; see  for what is done with them.
+typedef Steer = ({int tick, Direction direction});
+
 enum GamePhase { ready, running, paused, gameOver }
 
 enum GameMode {
@@ -156,6 +160,14 @@ class SnakeEngine {
   /// The turn that will be applied on the next tick, if any.
   Direction? get queuedDirection =>
       inputQueue.isEmpty ? null : inputQueue.first;
+
+  /// Every turn that actually took effect, with the tick it landed on.
+  ///
+  /// With the seed this is the whole run: the engine's clock is counted
+  /// in ticks rather than read off the wall, so the same seed and the
+  /// same turns give the same game, every time, on any device. See
+  /// `run_log.dart`.
+  final List<Steer> steers = [];
 
   late GamePhase phase;
   late int score;
@@ -392,6 +404,7 @@ class SnakeEngine {
     final startY = rows ~/ 2;
     direction = Direction.right;
     inputQueue.clear();
+    steers.clear();
     snake = [
       for (var i = 0; i < initialLength; i++) GridPoint(startX - i, startY),
     ];
@@ -520,6 +533,10 @@ class SnakeEngine {
       final next = inputQueue.removeAt(0);
       if (next != direction.opposite) {
         direction = next;
+        // Recorded here rather than where the input arrived, because
+        // this is the only place that knows which of the turns a player
+        // asked for actually became one.
+        steers.add((tick: totalTicks, direction: next));
       }
     }
 

@@ -442,6 +442,7 @@ class _GamePageState extends State<GamePage>
               dailyState: session.dailyState,
               playedDailyToday: session.playedDailyToday,
               onStartDaily: () => _startSeeded(session.startDaily),
+              ghostScore: session.ghostScore,
               onNewChallenge: () => _startSeeded(
                 () => session.startChallenge(
                   ChallengeCode.random(session.selectedMode),
@@ -590,6 +591,8 @@ class _GamePageState extends State<GamePage>
             )
           : null,
       countdown: session.resumeCountdown,
+      ghost: session.ghostSnake,
+      ghostPrevious: session.ghostPreviousSnake,
     );
   }
 }

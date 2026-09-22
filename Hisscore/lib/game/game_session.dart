@@ -13,6 +13,7 @@ import 'notification_service.dart';
 import 'online_scores.dart';
 import 'quests.dart';
 import 'review_prompter.dart';
+import 'run_log.dart';
 import 'run_standing.dart';
 import 'snake_engine.dart';
 import 'sound_manager.dart';
@@ -269,8 +270,86 @@ class GameSession extends ChangeNotifier {
     savedSkinId = await store.loadSkinId();
     playerName = await store.loadPlayerName();
     progress = await store.loadProgress();
+    savedGhost = await store.loadDailyGhost();
     loaded = true;
     _notify();
+  }
+
+  // ─── The ghost ────────────────────────────────────
+
+  /// The best daily run kept on this device, as a replayable log.
+  RunLog? savedGhost;
+
+  /// The saved run, but only when it is of *today's* board. Yesterday's
+  /// ghost is a ghost of a different game.
+  RunLog? get todaysGhost {
+    final ghost = savedGhost;
+    if (ghost == null || ghost.dayNumber != dailyDayNumber) return null;
+    return ghost;
+  }
+
+  /// The ghost being raced, replayed one tick behind the live run.
+  ///
+  /// A second engine rather than a stored list of positions, because
+  /// the log is a list of turns and the engine is the only thing that
+  /// knows what a turn does. It costs one extra tick of pure Dart per
+  /// frame and keeps the ghost honest.
+  SnakeEngine? ghost;
+
+  /// Where the ghost is now, or nothing when no race is on.
+  List<GridPoint> get ghostSnake => _ghostRunning ? ghost!.snake : const [];
+
+  /// Where it was last tick, so the board can slide it rather than
+  /// jump it a whole cell at a time.
+  List<GridPoint> get ghostPreviousSnake =>
+      _ghostRunning ? ghost!.previousSnake : const [];
+
+  bool get _ghostRunning => ghost != null && ghost!.phase != GamePhase.gameOver;
+
+  /// The score to beat, when there is a ghost on today's board.
+  int? get ghostScore => todaysGhost?.score;
+
+  void _startGhost() {
+    final log = todaysGhost;
+    ghost = null;
+    _ghostSteer = 0;
+    if (log == null) return;
+    ghost = log.engineForReplay()..start();
+    _ghostLog = log;
+  }
+
+  RunLog? _ghostLog;
+  int _ghostSteer = 0;
+
+  /// Moves the ghost on by the one tick the live run just took.
+  void _tickGhost() {
+    final runner = ghost;
+    final log = _ghostLog;
+    if (runner == null || log == null) return;
+    if (runner.phase != GamePhase.running) return;
+    if (runner.totalTicks >= log.ticks) {
+      runner.phase = GamePhase.gameOver;
+      return;
+    }
+    final at = runner.totalTicks + 1;
+    while (_ghostSteer < log.steers.length &&
+        log.steers[_ghostSteer].tick <= at) {
+      runner.direction = log.steers[_ghostSteer].direction;
+      _ghostSteer++;
+    }
+    runner.tick();
+  }
+
+  /// Keeps the best daily run on this device, so there is something to
+  /// race next time. Only a better score replaces it, and only today's
+  /// board is worth keeping at all.
+  Future<void> _keepGhost(int seed) async {
+    if (!isDailyRun) return;
+    final best = todaysGhost;
+    if (best != null && best.score >= engine.score) return;
+    final log = RunLog.of(engine, seed: seed, dayNumber: dailyDayNumber);
+    savedGhost = log;
+    await store.saveDailyGhost(log);
   }
 
   /// Nobody has finished a run on this device yet, so the game should
@@ -347,6 +426,7 @@ class GameSession extends ChangeNotifier {
       engine.mode = selectedMode;
       isDailyRun = false;
       challenge = null;
+      ghost = null;
     }
     engine.start();
     startedAt = now();
@@ -375,6 +455,9 @@ class GameSession extends ChangeNotifier {
     outcome = null;
     streakOutcome = null;
     standing = null;
+    // The race starts with the run, so the two are on the same tick
+    // from the first move.
+    _startGhost();
     engine.start();
     startedAt = now();
     armTicker();
@@ -396,6 +479,8 @@ class GameSession extends ChangeNotifier {
     selectedMode = code.mode;
     isDailyRun = false;
     challenge = code;
+    // Nothing to race outside the daily.
+    ghost = null;
     newHighScore = false;
     outcome = null;
     streakOutcome = null;
@@ -471,6 +556,7 @@ class GameSession extends ChangeNotifier {
     final scoreBefore = engine.score;
     onTick?.call();
     engine.tick();
+    _tickGhost();
 
     final eaten = engine.lastEatenFood;
     if (engine.justAte && eaten != null) {
@@ -588,6 +674,7 @@ class GameSession extends ChangeNotifier {
     _notify();
     if (isDailyRun) {
       await _persistDailyResult();
+      await _keepGhost(DailyChallenge.seedForDay(dailyDayNumber));
     }
     await _recordProgress(wasAt);
     // Awaited, not fired and forgotten: nothing in the app waits on

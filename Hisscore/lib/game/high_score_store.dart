@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'quests.dart';
+import 'run_log.dart';
 import 'snake_engine.dart';
 
 // ─── Score entry for the top-5 leaderboard ──────────
@@ -169,6 +170,13 @@ abstract class HighScoreStore {
   /// XP, level and today's quest state.
   Future<PlayerProgress> loadProgress();
   Future<void> saveProgress(PlayerProgress progress);
+
+  /// The best daily run on this device, kept as a replayable log so it
+  /// can be raced against. One only: a ghost from yesterday is a ghost
+  /// of a different board. Null when there is none, or none worth
+  /// keeping.
+  Future<RunLog?> loadDailyGhost();
+  Future<void> saveDailyGhost(RunLog log);
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -184,6 +192,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   String? _skinId;
   String? _playerName;
   PlayerProgress _progress = const PlayerProgress();
+  String? _ghost;
 
   @override
   Future<int> load() async => value;
@@ -249,6 +258,12 @@ class InMemoryHighScoreStore implements HighScoreStore {
   @override
   Future<void> saveProgress(PlayerProgress progress) async =>
       _progress = progress;
+
+  @override
+  Future<RunLog?> loadDailyGhost() async => RunLog.decode(_ghost);
+
+  @override
+  Future<void> saveDailyGhost(RunLog log) async => _ghost = log.encode();
 }
 
 // ─── SharedPreferences (production) ─────────────────
@@ -264,6 +279,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _skinKey = 'hisscore.skin';
   static const _playerNameKey = 'hisscore.player_name';
   static const _progressKey = 'hisscore.progress';
+  static const _ghostKey = 'hisscore.daily_ghost';
 
   final String key;
   SharedPreferences? _prefs;
@@ -402,5 +418,17 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> saveProgress(PlayerProgress progress) async {
     await init();
     await _prefs!.setString(_progressKey, progress.encode());
+  }
+
+  @override
+  Future<RunLog?> loadDailyGhost() async {
+    await init();
+    return RunLog.decode(_prefs!.getString(_ghostKey));
+  }
+
+  @override
+  Future<void> saveDailyGhost(RunLog log) async {
+    await init();
+    await _prefs!.setString(_ghostKey, log.encode());
   }
 }

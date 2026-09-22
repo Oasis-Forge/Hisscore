@@ -20,6 +20,8 @@ class SnakeBoard extends StatefulWidget {
     this.particles,
     this.onSwipe,
     this.fullBleed = false,
+    this.ghost = const [],
+    this.ghostPrevious = const [],
   });
 
   final SnakeEngine engine;
@@ -36,6 +38,14 @@ class SnakeBoard extends StatefulWidget {
 
   final ParticleSystem? particles;
   final void Function(Direction direction)? onSwipe;
+
+  /// Where the player's best run on this board has got to by now.
+  /// Empty when there is no race on.
+  final List<GridPoint> ghost;
+
+  /// Where the ghost was last tick, so it can be slid rather than
+  /// jumped.
+  final List<GridPoint> ghostPrevious;
 
   @override
   State<SnakeBoard> createState() => _SnakeBoardState();
@@ -94,6 +104,8 @@ class _SnakeBoardState extends State<SnakeBoard> {
           tickProgress: widget.tickProgress,
           particles: widget.particles,
           staticLayers: _staticLayers,
+          ghost: widget.ghost,
+          ghostPrevious: widget.ghostPrevious,
         ),
         child: const SizedBox.expand(),
       ),
@@ -181,6 +193,8 @@ class SnakeBoardPainter extends CustomPainter {
     this.tickProgress = 1.0,
     this.particles,
     this.staticLayers,
+    this.ghost = const [],
+    this.ghostPrevious = const [],
   });
 
   final SnakeEngine engine;
@@ -188,6 +202,11 @@ class SnakeBoardPainter extends CustomPainter {
   final double tickProgress;
   final ParticleSystem? particles;
   final BoardLayerCache? staticLayers;
+  final List<GridPoint> ghost;
+
+  /// Where the ghost was last tick, so it can be slid rather than
+  /// jumped.
+  final List<GridPoint> ghostPrevious;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -227,6 +246,29 @@ class SnakeBoardPainter extends CustomPainter {
           rimPaint,
         );
       }
+    }
+
+    // ── Ghost ──
+    // Under everything the live run puts on the board, and dim enough
+    // to be a thing to glance at rather than a second snake to track.
+    //
+    // Slid between ticks exactly as the live snake is: drawn on its
+    // grid cell it would sit up to a whole cell ahead of a player who
+    // is in fact level with it, which is a lie in a race.
+    for (var i = 0; i < ghost.length; i++) {
+      final rect = _slid(
+        ghost[i],
+        i < ghostPrevious.length ? ghostPrevious[i] : ghost[i],
+        cellW,
+        cellH,
+      ).deflate(cellW * 0.22);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(cellW * 0.2)),
+        Paint()
+          ..color = RetroColors.phosphor.withValues(
+            alpha: i == 0 ? 0.32 : 0.16,
+          ),
+      );
     }
 
     // ── Portals ──
@@ -769,6 +811,22 @@ class SnakeBoardPainter extends CustomPainter {
   /// Each segment slides from where it was to where it is, which is the
   /// position of the segment that was ahead of it — so the whole snake
   /// flows forward instead of jumping a cell at a time.
+  /// A cell part-way between where it was and where it is, on the same
+  /// clock the live snake glides on. A jump of more than one cell is a
+  /// wrap or a portal, which snaps rather than sweeping the board.
+  Rect _slid(GridPoint to, GridPoint from, double cellW, double cellH) {
+    final dx = (to.x - from.x).toDouble();
+    final dy = (to.y - from.y).toDouble();
+    if (dx.abs() > 1 || dy.abs() > 1) return _cell(to, cellW, cellH);
+    final t = tickProgress.clamp(0.0, 1.0);
+    return Rect.fromLTWH(
+      (from.x + dx * t) * cellW,
+      (from.y + dy * t) * cellH,
+      cellW,
+      cellH,
+    );
+  }
+
   Rect _segmentRect(int i, double cellW, double cellH) {
     final current = engine.snake[i];
     final previous = engine.previousSnake;

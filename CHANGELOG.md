@@ -5,6 +5,9 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- Race yourself on the daily. Your best run of the day comes back as a faint
+  ghost snake running the board alongside you, and the daily card says the
+  score to beat. It only ever shows on the board it was set on.
 - A sixth mode: TIME ATTACK. Sixty seconds on the same board on every phone,
   with a timer ring in the corner that turns red for the last ten seconds, and
   apples worth double when you take one within two seconds of the last. It has

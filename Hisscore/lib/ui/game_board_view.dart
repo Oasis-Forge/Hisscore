@@ -30,6 +30,8 @@ class GameBoardView extends StatelessWidget {
     required this.onSwipe,
     this.overlay,
     this.countdown = 0,
+    this.ghost = const [],
+    this.ghostPrevious = const [],
   });
 
   final SnakeEngine engine;
@@ -48,6 +50,13 @@ class GameBoardView extends StatelessWidget {
   /// Seconds left of the 3-2-1 after a second chance; 0 for none.
   final int countdown;
 
+  /// The best run on this board so far, where it has got to.
+  final List<GridPoint> ghost;
+
+  /// Where the ghost was last tick, so it can be slid rather than
+  /// jumped.
+  final List<GridPoint> ghostPrevious;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -65,6 +74,8 @@ class GameBoardView extends StatelessWidget {
                 particles: particles,
                 onSwipe: onSwipe,
                 fullBleed: true,
+                ghost: ghost,
+                ghostPrevious: ghostPrevious,
               ),
             ),
             if (levelFlashOpacity > 0) _buildLevelGlow(),

@@ -93,6 +93,7 @@ class ReadyModesTab extends StatelessWidget {
     required this.dailyState,
     required this.playedDailyToday,
     required this.onStartDaily,
+    this.ghostScore,
     required this.onNewChallenge,
     required this.onEnterCode,
     required this.questSummary,
@@ -106,6 +107,10 @@ class ReadyModesTab extends StatelessWidget {
   final DailyState dailyState;
   final bool playedDailyToday;
   final VoidCallback onStartDaily;
+
+  /// The score of the run waiting to be raced on today's board, if
+  /// there is one.
+  final int? ghostScore;
 
   /// Start a fresh seeded game in the selected mode, to share as a code.
   final VoidCallback onNewChallenge;
@@ -147,6 +152,7 @@ class ReadyModesTab extends StatelessWidget {
           dailyState: dailyState,
           playedToday: playedDailyToday,
           onStart: onStartDaily,
+          ghostScore: ghostScore,
         ),
         const SizedBox(height: 14),
         Row(
@@ -375,12 +381,17 @@ class DailyChallengeCard extends StatelessWidget {
     required this.dailyState,
     required this.playedToday,
     required this.onStart,
+    this.ghostScore,
   });
 
   final int dayNumber;
   final DailyState dailyState;
   final bool playedToday;
   final VoidCallback onStart;
+
+  /// The score of the best run kept for today's board, when there is
+  /// one to race.
+  final int? ghostScore;
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +452,13 @@ class DailyChallengeCard extends StatelessWidget {
             Text(
               "TODAY'S SCORE ${dailyState.lastScore}",
               style: RetroText.pixel(size: 7, color: RetroColors.phosphorDim),
+            ),
+          ],
+          if (ghostScore != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'BEAT YOUR GHOST: $ghostScore',
+              style: RetroText.pixel(size: 7, color: RetroColors.phosphor),
             ),
           ],
           const SizedBox(height: 8),
