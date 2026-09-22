@@ -32,11 +32,17 @@ the crash log, the daily-challenge streak and the saved ghost run all
 live in `SharedPreferences` on-device.
 
 The one exception is the **global leaderboard**: Firebase anonymous auth
-plus Cloud Firestore. At the end of every run scoring above zero the app
-sends a display name, the score, a timestamp and an anonymous user id,
-with no prompt and no opt-out. Say so accurately in anything
-user-facing — the privacy policy and the store listing have both been
-wrong about this once already.
+plus Cloud Firestore. With the player's agreement, each run scoring above
+zero sends a display name, the score, a timestamp and an anonymous user
+id. **Nothing is sent until they have agreed** — `leaderboardOptIn` is
+null until the game has asked, and null behaves as no. The question is
+put once, on the first game-over card worth submitting, and the answer is
+changeable under SENDING YOUR SCORES on the STATS tab.
+
+Say so accurately in anything user-facing. The privacy policy and the
+store listing have each been wrong about this once, in opposite
+directions: both once claimed nothing left the device at all, and both
+then described a silent submission that no longer happens.
 
 ## Commands
 

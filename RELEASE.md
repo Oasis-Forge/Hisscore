@@ -68,21 +68,22 @@ leaderboard.
 **The old wording was wrong and was briefly published.** It said the app
 collects "Nothing" and that "There is no backend for it to send data to",
 which stopped being true when the Firebase leaderboard shipped. The page now
-states what actually leaves the device: at the end of every run scoring above
-zero, the app submits a display name, the score, a server timestamp and an
-anonymous Firebase Auth ID to Cloud Firestore, with no prompt and no opt-out.
+states what actually leaves the device: with the player's agreement, at the end
+of each run scoring above zero, the app submits a display name, the score, a
+server timestamp and an anonymous Firebase Auth ID to Cloud Firestore.
 
-Two things still follow from that:
-
+- [x] **An opt-out.** Done 2026-09-22 (#48), and it is an opt-*in*: nothing is
+      sent until the player answers the question the game asks once, on the
+      first game-over card worth submitting. "Not asked" behaves as no. It can
+      be changed any time under SENDING YOUR SCORES on the STATS tab. This was
+      the GDPR gap — silent submission of a pseudonymous id plus a display name
+      is personal data, and "play offline" was a workaround, not a control.
 - [ ] **Play Data safety form** must match this: collected and transmitted are
       a user-chosen name ("Personal info > Name", public), in-app score
       ("App activity"), and a pseudonymous device/user ID. Not encrypted at
       rest by us beyond Firestore's own defaults; no deletion request flow in
-      the app, only by email.
-- [ ] **Consider an opt-out before wider release.** Silent submission of a
-      pseudonymous ID plus a display name is personal data under GDPR. The
-      policy currently tells players to go offline to avoid it, which is a
-      workaround, not a control.
+      the app, only by email. Data safety has a field for whether collection is
+      optional — it now is, and the answer should say so.
 
 Accurate as of this version: no ads, no analytics, no tracking SDKs, and crash
 reports stay on-device because no `SENTRY_DSN` is set in any shipped build. The
@@ -210,9 +211,10 @@ records a run as a seed plus its turns and a replay recomputes the score —
 so what is left is a Cloud Function that replays it. Needs the Blaze plan.
 Tracked in ROADMAP.md phase 3.
 
-**An opt-out for score submission.** See section 2: a name and a
-pseudonymous id go up at the end of every run with no prompt. Worth having
-before wider release, not before first submission.
+**A way to delete your own board entry.** Removal is by email today. An
+in-app "take me off the boards" that actually deletes the row — rather
+than just stopping future ones, which is what the STATS toggle does —
+would be better, and the Data safety form asks about it.
 
 **Golden coverage for the newer painting.** `board_golden_test.dart`
 covers the snake, pickups, obstacles, skins, effects and backdrops, but

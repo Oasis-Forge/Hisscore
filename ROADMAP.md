@@ -3,7 +3,7 @@
 Goal: make Hisscore the next viral casual game. Order is by impact per effort.
 
 **Status as of 2026-09-22.** Phases 1, 2 and 4 are done. Phase 3 is done except server-side score
-verification, seed links and comparable all-time boards. Phase 5 is two of five. `[x]` done and
+verification and seed links. Phase 5 is two of five. `[x]` done and
 merged, `[ ]` not done, `[~]` deliberately changed or partly done. Each line ends with where it
 landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
 
@@ -50,8 +50,11 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
       applied, and a replay recomputes the score rather than trusting it. What remains is the server
       — a Cloud Function that replays the log (Blaze plan).
 - [ ] Tappable seed links (`?seed=` or an app link). Codes must be typed or pasted today.
-- [~] Make all-time boards comparable (normal runs fit the screen, so board sizes differ). Time
-      Attack (#45) is on the fixed grid and so *is* comparable; the other five modes are not.
+- [x] Make all-time boards comparable (#48). Every run now gets the same *amount* of board — the
+      daily's 600 cells — with the shape following the screen, instead of 20 columns and as many
+      rows as the phone was tall. A tall phone used to get 20x43 and a tablet 20x27, 60% apart, on
+      one board. Comparable rather than identical: identical would mean letterboxing every run,
+      which this game deliberately does not do outside the daily and challenge codes.
 
 ## Phase 4: Depth and retention: DONE
 
@@ -94,10 +97,11 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
       consent handling, and store/privacy updates. **The rewarded-revive placement is already
       built**: the second-chance card (#42) is a button with a countdown ring precisely so the ring
       can become the "watch an ad" wait without the card around it changing.
-- [ ] **Privacy and store forms.** The privacy policy (`docs/index.html`) now describes the
-      leaderboard and is live at <https://oasis-forge.github.io/Hisscore/>. Still open: the Play
-      Data safety form, `store/listing.md`, and an in-app opt-out for score submission, which
-      today happens silently at the end of every run. Ads add to this.
+- [~] **Privacy and store forms.** The privacy policy (`docs/index.html`) describes the leaderboard
+      and is live at <https://oasis-forge.github.io/Hisscore/>. **Score submission now asks first**
+      (#48): nothing is sent until the player says yes, and it can be turned off again on the STATS
+      tab. Still open: pasting the policy URL into the consoles, the Play Data safety form, and the
+      content rating questionnaire. Ads add to this.
 - [ ] Device verification (`RELEASE.md` section 1). Share, notifications and lifecycle were
       confirmed on the emulator 2026-09-20. Sound, haptics and the rating prompt still need
       real hardware: the emulator has no working audio output, no vibration motor, and no
