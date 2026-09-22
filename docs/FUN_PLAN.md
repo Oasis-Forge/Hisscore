@@ -32,7 +32,7 @@ combo. Not released yet; `game_page.dart` is 1,339 lines and owns the whole sess
 
 ## Phase A: feel (deaths feel fair, good moments get noticed)
 
-**A1. Grace tick and death slow-mo.** Most Snake deaths that feel unfair are a turn that landed one
+**DONE — A1. Grace tick and death slow-mo.** Most Snake deaths that feel unfair are a turn that landed one
 frame late. Add `graceTicks` to the engine (1 in every mode but Hardcore): when the next tick would
 kill and the input queue is empty, hold for one more tick before dying; a turn that arrives in that
 window is applied and the snake lives. In the UI, play the last 400 ms before the overlay at 0.3x
@@ -41,22 +41,22 @@ wall with no input dies exactly one tick later than today (fails on old); a turn
 grace tick survives; Hardcore unchanged; the daily replays identically on two engines with the same
 seed and inputs.
 
-**A2. Close calls and "new best" in the moment.** Every turn the grace tick saved is a CLOSE CALL:
+**DONE — A2. Close calls and "new best" in the moment.** Every turn the grace tick saved is a CLOSE CALL:
 floating label (`floating_label.dart`), +5 points, a short sting, counted per run and shown on the
 end screen. When the score passes the saved best mid-run, a NEW BEST label with its own sting; today
 the player only learns it at game over. Add `closeCalls` to the run outcome so milestones (B4) can
 use it.
 
-**A3. Haptics pass.** Light tap on eat, medium on each combo step, selection click on a pickup,
+**DONE — A3. Haptics pass.** Light tap on eat, medium on each combo step, selection click on a pickup,
 heavy on death, a double pulse on level up. Check where haptics fire today and add a toggle next to
 the music toggle if there is none. Cannot be verified on the emulator: say so in the PR.
 
-**A4. Onboarding.** First run: the attract demo behind the menu gets a swipe hint, and the pause
+**DONE — A4. Onboarding.** First run: the attract demo behind the menu gets a swipe hint, and the pause
 menu gets a pickup legend (what shrink and magnet do is not obvious). Small, can go first.
 
 ## Phase B: the reward loop (why play one more run)
 
-**B1. Second chance.** Once per run in Adventure and Endless (never daily, Hardcore or Zen): on death
+**DONE — B1. Second chance.** Once per run in Adventure and Endless (never daily, Hardcore or Zen): on death
 the overlay offers SECOND CHANCE with a 3-second countdown ring. Accept: snake cut to
 `max(3, length / 2)`, obstacles within 3 cells of the head cleared, combo reset, 3-2-1 resume. The run
 is flagged `revived`; it still counts for XP, quests and boards (boards are unverified anyway) but the
@@ -64,7 +64,7 @@ share card and end screen carry a small "revived" mark. Build the button so it c
 ad" later: the roadmap decided on ads and this is the rewarded placement. Tests: `engine.revive()`
 unit tests; overlay widget test for the countdown and the one-per-run rule.
 
-**B2. End-of-run screen.** Today it shows +XP, finished quests and a level-up. Add: score against best
+**DONE — B2. End-of-run screen.** Today it shows +XP, finished quests and a level-up. Add: score against best
 as a bar, best combo, apples, close calls, the XP bar animating from old to new, quest progress
 ticking up, and when the board answered, "12 points behind #8 on the daily". PLAY AGAIN is the primary
 button; mode change is secondary. This is the screen that decides whether the next run happens.
@@ -91,7 +91,7 @@ darker tint as its tell; eating it loses 3 segments, resets the combo and shakes
 paired tiles; the head enters one and leaves the other keeping its direction, the body follows. Two
 PRs. Both need engine tests and goldens.
 
-**C3. Weekly modifier on the daily.** Picked by ISO week number from a fixed list: double speed, no
+**DONE — C3. Weekly modifier on the daily.** Picked by ISO week number from a fixed list: double speed, no
 walls, mirrored controls, fog (only cells within 5 of the head drawn), tiny board (14x20), magnet
 madness. Named on the daily tab and the share card. Tests: the modifier for a week is deterministic,
 and each flag has an engine test. Cheap, because the daily is already seeded and fixed-size.
@@ -103,7 +103,7 @@ before adding the board.
 
 ## Phase D: competition (play against people), in this order
 
-**D1. Extract `GameSession` from `game_page.dart`.** Pure refactor: engine lifecycle, ticker,
+**DONE — D1. Extract `GameSession` from `game_page.dart`.** Pure refactor: engine lifecycle, ticker,
 persistence, quests and online submit move to a controller; goldens and widget tests must pass
 unchanged; the page drops well under 600 lines. The roadmap asks for this before phase 5, and D2, D3
 and server verification all hook into it.
@@ -127,18 +127,23 @@ After D3 the roadmap items follow naturally: server verification, tappable seed 
 
 ## Suggested order
 
-| # | PR | Version |
-|---|---|---|
-| 1 | A4 onboarding, with the kit-update merge | minor |
-| 2 | A1 grace tick and slow-mo | minor |
-| 3 | A2 close calls and new best | minor |
-| 4 | B2 end-of-run screen | minor |
-| 5 | B1 second chance | minor |
-| 6 | C3 weekly modifier | minor |
-| 7 | B3 streak freeze, then B4 milestones | minor each |
-| 8 | C1, then C2 (two PRs) | minor each |
-| 9 | C4 Time Attack | minor |
-| 10 | D1, D2, D3 in order | D1 patch, others minor |
+| # | PR | Version | Shipped |
+|---|---|---|---|
+| 1 | A4 onboarding, with the kit-update merge | minor | #42 |
+| 2 | A1 grace tick and slow-mo | minor | #42 |
+| 3 | A2 close calls and new best | minor | #42 |
+| 4 | B2 end-of-run screen | minor | #42, fixed in #43 |
+| 5 | B1 second chance | minor | #42, fixed in #43 |
+| 6 | C3 weekly modifier | minor | #44 |
+| 7 | B3 streak freeze, then B4 milestones | minor each | |
+| 8 | C1, then C2 (two PRs) | minor each | |
+| 9 | C4 Time Attack | minor | |
+| 10 | D1, D2, D3 in order | D1 patch, others minor | D1 in #42 |
+
+Phases A and D1 went out as one PR (#42) rather than five, and the
+version bumps were collected instead of taken per PR: the whole fun
+track is meant to be one release. A3 haptics shipped with it and is
+still unverified on real hardware, per the note above.
 
 A3 haptics and the balance stats fit anywhere a phone is available. Stop and reorder if playing the
 game on a real phone says otherwise; nothing above has been tested against a player.
