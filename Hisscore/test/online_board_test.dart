@@ -141,11 +141,61 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('GAME OVER'), findsOneWidget);
 
+    // Nobody has been asked yet, so nothing has gone anywhere and the
+    // card is asking.
+    expect(find.text('PUT YOUR SCORES ON THE BOARDS?'), findsOneWidget);
+    var top = await tester.runAsync(
+      () => board.top(BoardId.allTime(GameMode.classic)),
+    );
+    expect(top, isEmpty, reason: 'held until there is an answer');
+
+    await tester.tap(find.text('YES, SEND IT'));
+    await tester.pump();
+    await tester.pump();
+
+    top = await tester.runAsync(
+      () => board.top(BoardId.allTime(GameMode.classic)),
+    );
+    expect(top, hasLength(1), reason: 'the run they were asked about');
+    expect(top!.single.name, 'PLAYER-ME00');
+    expect(top.single.score, 10);
+    expect(find.text('PUT YOUR SCORES ON THE BOARDS?'), findsNothing);
+  });
+
+  testWidgets('and no is no: the run is dropped, not deferred', (tester) async {
+    final board = InMemoryOnlineScoreBoard(playerId: 'me');
+    final store = InMemoryHighScoreStore();
+    await tester.pumpWidget(
+      HisscoreApp(
+        highScoreStore: store,
+        onlineScores: board,
+        engineFactory: () => SnakeEngine(
+          columns: 6,
+          rows: 6,
+          firstFoodDistance: 1,
+          random: Random(1),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('PLAY'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await tester.tap(find.text('NO THANKS'));
+    await tester.pump();
+    await tester.pump();
+
     final top = await tester.runAsync(
       () => board.top(BoardId.allTime(GameMode.classic)),
     );
-    expect(top, hasLength(1));
-    expect(top!.single.name, 'PLAYER-ME00');
-    expect(top.single.score, 10);
+    expect(top, isEmpty);
+    expect(await store.loadLeaderboardOptIn(), isFalse);
+    expect(
+      find.text('PUT YOUR SCORES ON THE BOARDS?'),
+      findsNothing,
+      reason: 'asked once, not every run',
+    );
   });
 }

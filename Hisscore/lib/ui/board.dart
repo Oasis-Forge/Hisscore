@@ -1,4 +1,4 @@
-import 'dart:math' show cos, pi, sin;
+import 'dart:math' show cos, pi, sin, sqrt;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -861,23 +861,38 @@ class SnakeBoardPainter extends CustomPainter {
 
 // ─── Board sizing ───────────────────────────────────
 
-/// A grid that fills [size] with square-ish cells: 20 across in
-/// portrait with as many rows as the screen is tall, flipped for
-/// landscape. Clamped so an extreme window can't produce an absurd
-/// board.
+/// How many cells a normal run gets, whatever it is played on. The
+/// daily's 20x30, so every run is the same amount of board as the run
+/// everybody plays.
+const int targetBoardCells = 600;
+
+/// A grid that fills [size] with square-ish cells and **the same amount
+/// of board on every device**: [targetBoardCells] of them, with the
+/// shape following the screen.
+///
+/// It used to pin 20 columns and let the rows follow the screen, which
+/// gave a tall phone 20x43 and a short one 20x27 — and then ranked both
+/// on the same all-time board, with 60% more room on one than the other.
+/// Area is what decides how long a snake survives, so area is what is
+/// held fixed. The screen is still filled edge to edge; only the cell
+/// size changes.
+///
+/// The shape is not identical across devices, so this makes boards
+/// *comparable* rather than truly equal. Identical would mean
+/// letterboxing every run, which the game deliberately does not do
+/// outside the daily and challenge codes.
 ({int columns, int rows}) boardGridFor(Size size) {
-  const base = 20;
+  const fallback = (columns: 20, rows: 30);
+  const minSpan = 12;
   const maxSpan = 46;
-  if (size.width <= 0 || size.height <= 0) {
-    return (columns: base, rows: base);
-  }
-  if (size.height >= size.width) {
-    final rows = (base * size.height / size.width).round().clamp(base, maxSpan);
-    return (columns: base, rows: rows);
-  }
-  final columns = (base * size.width / size.height).round().clamp(
-    base,
-    maxSpan,
-  );
-  return (columns: columns, rows: base);
+  if (size.width <= 0 || size.height <= 0) return fallback;
+
+  // columns * rows == targetBoardCells, and rows / columns == the
+  // screen's aspect, so columns = sqrt(cells / aspect).
+  final aspect = size.height / size.width;
+  final columns = sqrt(
+    targetBoardCells / aspect,
+  ).round().clamp(minSpan, maxSpan);
+  final rows = (targetBoardCells / columns).round().clamp(minSpan, maxSpan);
+  return (columns: columns, rows: rows);
 }

@@ -452,6 +452,9 @@ class _GamePageState extends State<GamePage>
               online: widget.onlineScores,
               playerName: session.displayName,
               onEditName: _editName,
+              optIn: session.leaderboardOptIn,
+              onOptInChanged: (yes) =>
+                  unawaited(session.setLeaderboardOptIn(yes)),
               statsView: _statsView,
               onStatsViewChanged: (v) => setState(() => _statsView = v),
               progress: session.todayProgress,
@@ -562,8 +565,9 @@ class _GamePageState extends State<GamePage>
       particles: effects.particles,
       shake: effects.shake,
       labels: effects.labels,
-      levelFlashOpacity: effects.levelFlashOpacity,
-      deathFlashOpacity: effects.deathFlashOpacity,
+      // Read per frame, not captured here — see GameBoardView.
+      levelFlashOpacity: () => effects.levelFlashOpacity,
+      deathFlashOpacity: () => effects.deathFlashOpacity,
       onSwipe: _onTurn,
       overlay: showOverlay
           ? GameOverlay(
@@ -588,6 +592,9 @@ class _GamePageState extends State<GamePage>
               onSecondChanceExpired: session.refuseSecondChance,
               streakFreezesSpent: session.streakOutcome?.freezesSpent ?? 0,
               streakFreezeEarned: session.streakOutcome?.freezeEarned ?? false,
+              onLeaderboardChoice: session.owesLeaderboardChoice
+                  ? ((yes) => unawaited(session.setLeaderboardOptIn(yes)))
+                  : null,
             )
           : null,
       countdown: session.resumeCountdown,

@@ -324,6 +324,7 @@ void main() {
         now: () => DailyChallenge.dateForDay(dayWith(WeeklyModifier.noWalls)),
       );
       await session.load();
+      session.leaderboardOptIn = true;
       session.startDaily();
       session.engine.score = 500;
       session.engine.phase = GamePhase.gameOver;

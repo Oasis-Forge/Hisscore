@@ -34,6 +34,7 @@ class GameOverlay extends StatelessWidget {
     this.onSecondChanceExpired,
     this.streakFreezesSpent = 0,
     this.streakFreezeEarned = false,
+    this.onLeaderboardChoice,
   });
 
   final GamePhase phase;
@@ -73,6 +74,10 @@ class GameOverlay extends StatelessWidget {
   /// unless the game tells you what it spent.
   final int streakFreezesSpent;
   final bool streakFreezeEarned;
+
+  /// Set when this run had somewhere to go and the game has never asked
+  /// whether it may send it. Null when the question does not apply.
+  final ValueChanged<bool>? onLeaderboardChoice;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +196,12 @@ class GameOverlay extends StatelessWidget {
                       'NEW HISCORE',
                       style: RetroText.pixel(size: 11, color: RetroColors.food),
                     ),
+                  ],
+                  // Asked once, at the only moment it means anything:
+                  // there is a real score sitting here that would go up.
+                  if (onLeaderboardChoice != null) ...[
+                    const SizedBox(height: 18),
+                    LeaderboardAsk(onChoice: onLeaderboardChoice!),
                   ],
                   const SizedBox(height: 16),
                   SecondaryArcadeButton(
@@ -398,6 +409,73 @@ class _ProgressLines extends StatelessWidget {
               ),
             ),
       ],
+    );
+  }
+}
+
+// ─── The one-time leaderboard question ───────────────
+
+/// Asks, once, whether this player's scores may go on the public
+/// boards.
+///
+/// It is a block on the game-over card rather than a dialog on first
+/// launch, because a dialog before anybody has played is a thing to
+/// dismiss, not a thing to decide. Here there is a real score on screen
+/// that the answer applies to.
+///
+/// Both answers are the same size and neither is preselected: the point
+/// is a choice, and a dialog with one big bright button and one grey
+/// one is not one.
+class LeaderboardAsk extends StatelessWidget {
+  const LeaderboardAsk({super.key, required this.onChoice});
+
+  final ValueChanged<bool> onChoice;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: RetroColors.zenBlue.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: RetroColors.zenBlue.withValues(alpha: 0.5),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'PUT YOUR SCORES ON THE BOARDS?',
+            textAlign: TextAlign.center,
+            style: RetroText.pixel(size: 8, color: RetroColors.zenBlue),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'YOUR NAME AND SCORE GO UP PUBLICLY.\nNOTHING ELSE. CHANGE IT ANY TIME IN STATS.',
+            textAlign: TextAlign.center,
+            style: RetroText.pixel(size: 6, color: RetroColors.metal),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SecondaryArcadeButton(
+                label: 'NO THANKS',
+                color: RetroColors.metal,
+                onPressed: () => onChoice(false),
+              ),
+              const SizedBox(width: 10),
+              SecondaryArcadeButton(
+                label: 'YES, SEND IT',
+                color: RetroColors.phosphor,
+                onPressed: () => onChoice(true),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

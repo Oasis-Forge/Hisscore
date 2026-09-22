@@ -25,14 +25,20 @@ void main() {
   GameSession build({
     GameMode mode = GameMode.classic,
     OnlineScoreBoard? online,
+    // Nothing reaches a board until the player has said yes, so a test
+    // about submission has to say yes. Pass false to test the refusal.
+    bool optIn = true,
   }) {
     store = InMemoryHighScoreStore();
-    return session = GameSession(
-      store: store,
-      onlineScores: online ?? const NoopOnlineScoreBoard(),
-      engineFactory: () => SnakeEngine(mode: mode, random: Random(1)),
-      now: today,
-    )..selectedMode = mode;
+    return session =
+        GameSession(
+            store: store,
+            onlineScores: online ?? const NoopOnlineScoreBoard(),
+            engineFactory: () => SnakeEngine(mode: mode, random: Random(1)),
+            now: today,
+          )
+          ..selectedMode = mode
+          ..leaderboardOptIn = optIn;
   }
 
   /// Ticks until the run ends, then waits for the save it kicked off.

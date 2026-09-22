@@ -8,7 +8,43 @@ import 'package:hisscore/main.dart';
 import 'package:hisscore/ui/run_effects.dart';
 
 /// The slow-motion beat between dying and the game-over card.
+/// The red flash has to fade on its own clock.
+///
+/// It used to be handed to the board as a number, captured whenever the
+/// page last rebuilt — and after a run ends, nothing rebuilds it. A
+/// player with no network therefore read the whole game-over card
+/// through a red wash, because a leaderboard answering was the only
+/// thing that happened to rebuild the page afterwards.
+void _flashFades() {
+  test('the death flash fades on time alone', () {
+    var clock = DateTime(2026, 9, 22, 12);
+    final effects = RunEffects(now: () => clock)
+      ..measure(
+        size: const Size(200, 300),
+        offset: Offset.zero,
+        columns: 10,
+        rows: 15,
+      )
+      ..died(const GridPoint(5, 5));
+
+    expect(effects.deathFlashOpacity, greaterThan(0));
+
+    // Well past the flash, with nobody notifying anybody: no ticker,
+    // no listener, no leaderboard answering. Just time.
+    clock = clock.add(const Duration(seconds: 5));
+
+    expect(
+      effects.deathFlashOpacity,
+      0,
+      reason: 'a run that ends offline must not leave the card washed red',
+    );
+    effects.dispose();
+  });
+}
+
 void main() {
+  _flashFades();
+
   /// A board small enough that the snake runs out of room quickly.
   SnakeEngine cramped() => SnakeEngine(
     columns: 6,

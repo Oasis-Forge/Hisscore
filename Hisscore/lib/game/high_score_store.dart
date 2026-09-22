@@ -177,6 +177,15 @@ abstract class HighScoreStore {
   /// keeping.
   Future<RunLog?> loadDailyGhost();
   Future<void> saveDailyGhost(RunLog log);
+
+  /// Whether the player agreed to their name and score going on the
+  /// public boards.
+  ///
+  /// **Null means they have never been asked**, and is not the same as
+  /// no: nothing is sent until there is an actual answer. Anything that
+  /// treats null as consent has misread this.
+  Future<bool?> loadLeaderboardOptIn();
+  Future<void> saveLeaderboardOptIn(bool value);
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -193,6 +202,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   String? _playerName;
   PlayerProgress _progress = const PlayerProgress();
   String? _ghost;
+  bool? _optIn;
 
   @override
   Future<int> load() async => value;
@@ -264,6 +274,12 @@ class InMemoryHighScoreStore implements HighScoreStore {
 
   @override
   Future<void> saveDailyGhost(RunLog log) async => _ghost = log.encode();
+
+  @override
+  Future<bool?> loadLeaderboardOptIn() async => _optIn;
+
+  @override
+  Future<void> saveLeaderboardOptIn(bool value) async => _optIn = value;
 }
 
 // ─── SharedPreferences (production) ─────────────────
@@ -280,6 +296,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _playerNameKey = 'hisscore.player_name';
   static const _progressKey = 'hisscore.progress';
   static const _ghostKey = 'hisscore.daily_ghost';
+  static const _optInKey = 'hisscore.leaderboard_opt_in';
 
   final String key;
   SharedPreferences? _prefs;
@@ -430,5 +447,18 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> saveDailyGhost(RunLog log) async {
     await init();
     await _prefs!.setString(_ghostKey, log.encode());
+  }
+
+  @override
+  Future<bool?> loadLeaderboardOptIn() async {
+    await init();
+    // Absent on purpose until answered — see the interface.
+    return _prefs!.getBool(_optInKey);
+  }
+
+  @override
+  Future<void> saveLeaderboardOptIn(bool value) async {
+    await init();
+    await _prefs!.setBool(_optInKey, value);
   }
 }
