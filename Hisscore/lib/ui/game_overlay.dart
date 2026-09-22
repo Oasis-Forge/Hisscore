@@ -127,6 +127,18 @@ class GameOverlay extends StatelessWidget {
                         color: RetroColors.zenBlue,
                       ),
                     ),
+                    // Named again on the way out: a score under a rule
+                    // is only comparable to other scores under it.
+                    if (engine.modifier != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        engine.modifier!.label,
+                        style: RetroText.pixel(
+                          size: 7,
+                          color: RetroColors.amber,
+                        ),
+                      ),
+                    ],
                   ],
                   if (challengeCode != null) ...[
                     const SizedBox(height: 10),
