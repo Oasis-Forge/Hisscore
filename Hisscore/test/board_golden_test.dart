@@ -164,6 +164,12 @@ void main() {
     });
   }
 
+  // Laid out from FoodType.values rather than a hand-written list. The
+  // list version was named "every pickup type" and had six of the eight
+  // in it; adding a ninth left the golden that is supposed to guard how
+  // pickups look silently not guarding the new one. Driven off the enum
+  // it cannot fall behind again — a new type just appears in the next
+  // free cell, and the golden fails until somebody looks at it.
   testWidgets('every pickup type', (tester) async {
     final engine = _engine([
       const GridPoint(3, 8),
@@ -171,12 +177,15 @@ void main() {
       const GridPoint(1, 8),
     ], Direction.right);
     engine.foods = [
-      const FoodItem(position: GridPoint(1, 2), type: FoodType.apple),
-      const FoodItem(position: GridPoint(3, 2), type: FoodType.star),
-      const FoodItem(position: GridPoint(5, 2), type: FoodType.shield),
-      const FoodItem(position: GridPoint(7, 2), type: FoodType.speedBurst),
-      const FoodItem(position: GridPoint(9, 2), type: FoodType.shrink),
-      const FoodItem(position: GridPoint(11, 2), type: FoodType.magnet),
+      // Three to a row on the top half of a 14x10 board, which leaves
+      // the snake's row clear — the first go at this laid nine pickups
+      // out four wide and put the ninth underneath the snake, where a
+      // golden proves nothing about how it is drawn.
+      for (final (i, type) in FoodType.values.indexed)
+        FoodItem(
+          position: GridPoint(2 + (i % 3) * 4, 1 + (i ~/ 3) * 2),
+          type: type,
+        ),
     ];
     await tester.pumpWidget(_board(engine));
     await expectLater(

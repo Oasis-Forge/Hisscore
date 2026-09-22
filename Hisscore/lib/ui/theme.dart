@@ -41,6 +41,11 @@ abstract final class RetroColors {
   static const magnetPink = Color(0xFFFF6EC7);
   static const zenBlue = Color(0xFF7EC8FF);
 
+  /// The bank pickup. Orange rather than another gold, because the star
+  /// and the golden apple already own gold and a bank mistaken for
+  /// either is a pot left on the board.
+  static const bankOrange = Color(0xFFFF8A3D);
+
   /// A poison apple is the apple colour taken down and greened, because
   /// the tint is the only tell it gets. Close enough to be missed in a
   /// hurry, far enough to be seen by a player who looks.

@@ -13,9 +13,13 @@ shipped all fifteen of its items across PRs #42–#46. It closed out the whole o
 phase 5, the last of phase 2's juice, and the cross-cutting `GameSession` refactor. That plan is
 now a record rather than a to-do list; this file is the source of truth again.
 
-**Nothing has been released yet.** Version is still `1.0.1+2` and `CHANGELOG.md` holds 22 entries
+**Nothing has been released yet.** Version is still `1.0.1+2` and `CHANGELOG.md` holds 23 entries
 under `Unreleased`: the whole fun track is meant to go out as one release. The agreed order is
 **the rest of this roadmap, then the release** — see section 9 of the handoff.
+
+**What is actually left to build**, now that phase 4 is closed: Battle Royale and real-time
+2-player, both in phase 5. Everything else open below is blocked on an account, a console or the
+first Play upload rather than on code.
 
 ## Phase 1: First impression and shareability: DONE
 
@@ -66,16 +70,19 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
       one board. Comparable rather than identical: identical would mean letterboxing every run,
       which this game deliberately does not do outside the daily and challenge codes.
 
-## Phase 4: Depth and retention: DONE
+## Phase 4: Depth and retention: DONE (the last item landed 2026-09-22)
 
 - [x] Daily quests: three a day, same for everyone, one per difficulty (#29)
 - [x] XP and player levels (#29)
 - [x] Unlockable cosmetics: themes and skins by level (#30)
 - [x] Streak freeze: one per 7-day streak, 2 banked, spent automatically on a missed day (#45)
-- [~] Risk/reward mechanics, each behind a mode or flag so classic stays pure: moving golden apple
-      (#45), poison apple in hardcore (#45), portals in Adventure 7+ (#45). **The greed multiplier
-      was not built**; the ripening star — worth 50 on sight, 150 in its last second (#45) — is the
-      nearest thing to it, but it is a pickup, not a run-long multiplier.
+- [x] Risk/reward mechanics, each behind a mode or flag so classic stays pure: moving golden apple
+      (#45), poison apple in hardcore (#45), portals in Adventure 7+ (#45), and the greed multiplier
+      (#53), in Endless. Apples pay the score as always and drop a second copy into a pot that is
+      worth `greed` times more the longer it is held, up to ×4; a bank pickup every 5 apples is the
+      only way to keep it, and death or a second chance takes it. The pot is **winnings on top** —
+      nothing the player would have scored without greed is ever at risk, because a mode that could
+      leave a run worse off than not playing it is a mode nobody picks.
 - [x] Weekly modifier (#44). Six rather than the three listed: double speed, no walls, mirrored
       controls, fog, tiny board, magnet madness. Picked by ISO week.
 - [x] Milestones: 21 local firsts paying XP once, some granting a rank on the menu (#45). Not on the

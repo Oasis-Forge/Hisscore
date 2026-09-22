@@ -88,6 +88,7 @@ class SoundManager {
     FoodType.magnet => 'magnet',
     FoodType.golden => 'golden',
     FoodType.poison => 'poison',
+    FoodType.bank => 'bank',
   };
 
   Future<void> playPickup(FoodType type) => _play(pickupSound(type));

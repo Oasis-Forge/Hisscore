@@ -12,24 +12,27 @@ daily challenge with a weekly rule and a ghost to race, friend challenge codes, 
 and levels, local milestones, unlockable themes and skins, music, haptics, and a global leaderboard
 on Firebase.
 
-- **Roadmap:** phases 1, 2 and 4 done. Phase 3 done except server-side verification. Phase 5 is
-  three of five — Time Attack, the ghost race and async head-to-head have shipped; Battle Royale and
-  local 2-player have not started. See ROADMAP.md.
-- **Code:** `main` is green and **protected** (section 6). **551 tests in 41 files.** CI runs a
+- **Roadmap:** phases 1, 2, 3 and 4 done, bar server-side verification in phase 3. Phase 5 is three
+  of five — Time Attack, the ghost race and async head-to-head have shipped; Battle Royale and local
+  2-player have not started, and **they are the only two things left to build**. Everything else
+  still open is blocked on an account, a console or the first Play upload. See ROADMAP.md.
+- **Code:** `main` is green and **protected** (section 6). **576 tests in 42 files.** CI runs a
   format check, analyze, tests, an Android release build and a web build on every PR.
 - **The fun track is complete.** All fifteen items of [FUN_PLAN.md](FUN_PLAN.md) shipped across PRs
-  #42–#46. That plan is now a record, not a to-do list. Since then: docs and the handoff (#47, #49),
-  the leaderboard opt-in and comparable all-time boards (#48), golden coverage for the newer
-  painting (#50), challenge links (#51) and racing a friend (commit `e89e00b`).
+  #42–#46. That plan is now a record, not a to-do list. Since then: docs and the handoff (#47, #49,
+  #52), the leaderboard opt-in and comparable all-time boards (#48), golden coverage for the newer
+  painting (#50), challenge links (#51), racing a friend (commit `e89e00b`) and the greed pot (#53),
+  which closed phase 4.
 - **Nothing is released, and nothing releases from GitHub.** Version is still `1.0.1+2` — the whole
   fun track is meant to go out as one release, so the bumps were collected rather than taken per PR.
-  `CHANGELOG.md` has 22 player-facing entries waiting under `Unreleased`. There are no tags and no
+  `CHANGELOG.md` has 23 player-facing entries waiting under `Unreleased`. There are no tags and no
   GitHub Releases: that machinery was removed on 2026-09-20 because everything CI can build is
   debug-signed and Play rejects it. Releases are built locally and uploaded by hand (section 8).
 - **Not verified by a person on a real phone:** sound, haptics, the rating prompt. Share,
   notifications and lifecycle were confirmed on the emulator. Three gameplay features are also
   unseen by anyone — the golden apple, poison and portals — because all three are too deep into a
-  run to reach by hand through adb. They have engine tests; nobody has watched them move.
+  run to reach by hand through adb. They have engine tests; nobody has watched them move. Greed was
+  nearly a fourth: see the note on temporary constants in section 4.
 
 ## 2. Set up
 
@@ -39,7 +42,7 @@ cd Hisscore/Hisscore                                        # the app lives in t
 flutter pub get
 flutter analyze                                             # must be clean
 dart format --output=none --set-exit-if-changed .           # CI's format check
-flutter test                                                # all 551 should pass
+flutter test                                                # all 576 should pass
 ```
 
 - **Flutter 3.44.8, pinned in CI** (`FLUTTER_VERSION` in `.github/workflows/ci.yaml`). Use the same
@@ -243,8 +246,21 @@ RELEASE.md                      pre-launch checklist: read it before shipping
     better pinned by reading the widget tree: `hud_widgets_test.dart` asserts the timer ring's
     colour, number and fill straight off the widgets, which is platform-proof and sharper than a
     pixel count. A colour is not something only a golden can see.
+  - **Drive a "one of each" golden off the enum, not a list.** `board_all_pickups` was written as a
+    hand-listed six, and by the time there were nine types the golden named "every pickup type" was
+    guarding two thirds of them. It now lays `FoodType.values` out on a grid, so a new type appears
+    in it automatically and the golden fails until somebody looks at the picture.
 - **Text in a golden needs `loadPixelFont()`** (`test/support/pixel_font.dart`). Without it the
   engine falls back to the test font, which draws every glyph as an identical box.
+- **To see a rare pickup on the emulator, lower its constant and rebuild.** A bank appears every
+  five apples and lives nine seconds, and steering a snake onto five apples through `adb shell input
+  keyevent` — each call is ~300 ms, nearly two ticks — took a dozen round trips and still missed,
+  because every screenshot landed after the pickup had expired. Setting `bankEveryApples = 1` and
+  `bankLifetimeMs = 60000`, rebuilding, checking the look and the arithmetic, then putting both back
+  took three. The rules are covered by engine tests either way; what the device is for is the
+  drawing, the HUD and the card. **Put the constants back and re-run the suite before committing** —
+  the same trick would work for the golden apple, poison and portals, which is why nobody has seen
+  those yet.
 - **The pixel font `PressStart2P` has almost no glyphs beyond ASCII.** No check marks or emoji in UI
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
   first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.
@@ -309,9 +325,13 @@ lot.
 face has almost no glyphs beyond ASCII and the look is most of what the game is. Do not
 half-extract strings into a bundle nobody will translate. See ROADMAP.md.
 
-1. **The rest of the roadmap.** In rough order of value: an opt-out for score submission,
-   restricting the Firebase API key, server-side score verification (the input log is done, the
-   Cloud Function is not), tappable seed links, then phase 5's three multiplayer items.
+1. **The rest of the roadmap.** Two things are left that are only code: **Battle Royale** and
+   **local 2-player**, phase 5's last two. Both need the engine to hold more than one snake, which
+   nothing in it does today — that shared piece is most of the work, and doing either first makes
+   the other much smaller. The rest is gated on something outside the repo: restricting the Firebase
+   API key (Google Cloud console), server-side score verification (Blaze plan; the input log is done,
+   the Cloud Function is not), and App Link verification (`assetlinks.json` on the `oasis-forge.github.io`
+   root repo plus a Play signing fingerprint that will not exist until the first upload).
 2. **Ads** (decided): AdMob, `google_mobile_ads`, consent (UMP), and the privacy/store updates. The
    placement is already built — the second-chance card is a button with a countdown ring precisely
    so the ring can become the "watch an ad" wait without the card changing.

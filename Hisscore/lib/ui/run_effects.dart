@@ -253,6 +253,7 @@ class RunEffects extends ChangeNotifier {
     FoodType.magnet => RetroColors.magnetPink,
     FoodType.golden => RetroColors.starGold,
     FoodType.poison => RetroColors.poison,
+    FoodType.bank => RetroColors.bankOrange,
   };
 
   void _cancelLabelTimers() {

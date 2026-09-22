@@ -44,7 +44,9 @@ SIX WAYS TO PLAY
 • Classic — walls kill. The original, and it stays the original.
 • Adventure — clear apples to climb levels, each with its own obstacles,
   and portals from level seven.
-• Endless — walls wrap, so the only thing that can stop you is you.
+• Endless — walls wrap, so the only thing that can stop you is you. Every
+  apple also fills a pot that grows the longer you hold it; reach a bank
+  to keep it, die and it dies with you.
 • Hardcore — obstacles from the start, faster, double points, shields
   won't save you, and one apple in the bunch is poison.
 • Zen — nothing kills you. Just the snake, the board, and no pressure.

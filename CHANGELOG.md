@@ -16,6 +16,14 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   fill the screen edge to edge; the cells are just sized to fit.
 
 ### Added
+- ENDLESS now asks you how greedy you are. Every apple pays your score as
+  usual and drops a second copy of those points into a pot, and each one
+  makes the pot worth a little more when you cash it — up to four times.
+  The only way to keep it is to reach a bank, which turns up every five
+  apples and does not wait around; die first and the pot goes with you.
+  Nothing you would have scored anyway is ever at risk, so the question is
+  only ever whether to go for one more before you cash out. The card at the
+  end tells you what you banked and what you left behind.
 - Race a friend, whenever each of you feels like playing. Sharing a challenge
   now sends your run with it, so whoever opens the link races your snake down
   the same board — and the card at the end says who won and by how much. Their

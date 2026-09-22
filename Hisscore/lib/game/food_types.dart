@@ -27,7 +27,12 @@ enum FoodType {
 
   /// Hardcore only. It looks like an apple; the tint is the tell.
   /// Eating it costs three segments and the combo.
-  poison;
+  poison,
+
+  /// Endless only. Cashes the greed pot at whatever it has grown to,
+  /// and is the only way those points are ever kept — see
+  /// `SnakeEngine.pot`.
+  bank;
 
   /// Whether eating this type causes the snake to grow by one segment.
   bool get growsSnake => this == FoodType.apple;
@@ -52,6 +57,7 @@ enum FoodType {
     FoodType.magnet => 'MAGNET',
     FoodType.golden => 'GOLDEN',
     FoodType.poison => 'POISON',
+    FoodType.bank => 'BANK',
   };
 
   /// What eating it actually does, in the fewest words that still say
@@ -67,6 +73,7 @@ enum FoodType {
     FoodType.magnet => 'DRAGS FOOD TO YOU',
     FoodType.golden => 'RUNS AWAY  ·  +100 × COMBO',
     FoodType.poison => 'LOOKS LIKE AN APPLE. IS NOT',
+    FoodType.bank => 'CASHES YOUR POT × GREED',
   };
 }
 

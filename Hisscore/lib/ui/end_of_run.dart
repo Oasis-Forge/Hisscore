@@ -103,6 +103,47 @@ class HeadToHead extends StatelessWidget {
   }
 }
 
+/// What greed came to: what was banked against what was still in the
+/// pot when the run ended.
+///
+/// The lost half is the whole reason this is on the card. Banking is
+/// already obvious while it happens — a sound, a number, a jump in the
+/// score — but the cost of holding on is invisible, because it is a
+/// thing that quietly fails to be added. Written down at the end, one
+/// run teaches what the mechanic is asking.
+class GreedResult extends StatelessWidget {
+  const GreedResult({super.key, required this.banked, required this.lost});
+
+  final int banked;
+
+  /// Still in the pot when the run ended, and therefore gone.
+  final int lost;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = banked + lost;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _BarRow(
+          label: 'BANKED',
+          trailing: '$banked / $total',
+          fraction: total <= 0 ? 0.0 : banked / total,
+          color: RetroColors.bankOrange,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          lost > 0 ? '$lost LEFT IN THE POT' : 'NOTHING LEFT BEHIND',
+          style: RetroText.pixel(
+            size: 7,
+            color: lost > 0 ? RetroColors.phosphorDim : RetroColors.bankOrange,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// The XP bar, filling from where the player was to where they are.
 class XpBar extends StatelessWidget {
   const XpBar({super.key, required this.outcome});

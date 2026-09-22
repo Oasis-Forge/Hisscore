@@ -88,9 +88,13 @@ class Haptics {
   void select() => _fire(impl.selection);
 
   /// Something was eaten. An apple is the quiet common case; a pickup
-  /// is rarer and gets the sharper click.
-  void ate(FoodType type) =>
-      _fire(type == FoodType.apple ? impl.light : impl.selection);
+  /// is rarer and gets the sharper click; a bank is the largest single
+  /// thing that happens in a run and is felt accordingly.
+  void ate(FoodType type) => _fire(switch (type) {
+    FoodType.apple => impl.light,
+    FoodType.bank => impl.medium,
+    _ => impl.selection,
+  });
 
   /// The combo went up a step.
   void combo() => _fire(impl.medium);
