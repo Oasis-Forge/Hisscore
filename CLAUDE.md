@@ -226,6 +226,28 @@ Other one-shot services: `lib/game/notification_service.dart` (local
 daily-challenge streak reminder) and `lib/game/review_prompter.dart`
 (in-app store review prompt, fires once on a new high score).
 
+### Challenge links
+
+`lib/game/challenge_link.dart` is pure Dart: it builds the two link
+shapes from a `ChallengeCode` and reads one back out of a link, a bare
+code, or a whole pasted message. `lib/game/challenge_links.dart` is the
+usual interface seam (`PlatformChallengeLinks` / `NoChallengeLinks`) over
+a `MethodChannel` that `MainActivity.kt` answers.
+
+**Flutter's own deep linking is deliberately off.** It turns an incoming
+link into a *route*, and this app has one `MaterialApp(home:)` and no
+named routes, so the framework would be asked to navigate somewhere that
+does not exist. The channel hands over a string and the game decides.
+
+A link decides *what* to play, never *when*: arriving on the menu or a
+finished run it just starts, and on a live run (paused counts — tapping
+the link is how the run got paused) it pauses and asks first.
+
+**The https link is not a verified App Link yet**, so Android sends it to
+the browser. `docs/c/index.html` is the page it lands on; it validates
+the code with the same checksum and offers the `hisscore://` link, which
+always opens the app. See RELEASE.md section 4.
+
 ## Release process
 
 Outstanding pre-launch work (device verification, store listings,

@@ -239,6 +239,16 @@ RELEASE.md                      pre-launch checklist: read it before shipping
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
   first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.
 - `0` and `O` look alike in that font, which is why challenge codes use Crockford base32.
+- **An https intent-filter without a verified `assetlinks.json` sends the link to the browser**, and
+  on Android 12+ it does so silently — no "open with" dialog to hint that the app wanted it. This is
+  not a bug in the filter; it is what unverified App Links do. Test a challenge link on a device
+  with the scheme, which needs no verification:
+  ```bash
+  adb shell am start -a android.intent.action.VIEW -d "hisscore://c/C000-9RF8"
+  ```
+  The https form is worth testing too, precisely to watch it land in Chrome. See RELEASE.md
+  section 4 for what finishing verification needs, and note that neither half can be done from
+  this repo.
 - **The first tap after a dialog closes is often eaten** on the emulator: `screen`, then retry. And
   do not send `key back` from the menu: it leaves the app.
 - **A three-second window cannot be driven through adb.** A `uiautomator` dump takes about a second,

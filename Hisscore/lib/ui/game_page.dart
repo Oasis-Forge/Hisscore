@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../game/attract_demo.dart';
 import '../game/challenge_code.dart';
+import '../game/challenge_links.dart';
 import '../game/game_session.dart';
 import '../game/high_score_store.dart';
 import '../game/online_scores.dart';
@@ -38,11 +39,16 @@ class GamePage extends StatefulWidget {
     required this.highScoreStore,
     this.engineFactory,
     this.onlineScores = const NoopOnlineScoreBoard(),
+    this.links = const NoChallengeLinks(),
   });
 
   final HighScoreStore highScoreStore;
   final OnlineScoreBoard onlineScores;
   final SnakeEngine Function()? engineFactory;
+
+  /// Challenge links tapped outside the game. Owned by the caller — the
+  /// page listens, it does not dispose.
+  final ChallengeLinks links;
 
   @override
   State<GamePage> createState() => _GamePageState();
@@ -92,6 +98,8 @@ class _GamePageState extends State<GamePage>
   /// can animate the snake between cells instead of jumping.
   DateTime _lastTickAt = DateTime.now();
 
+  StreamSubscription<ChallengeCode>? _linkSub;
+
   @override
   void initState() {
     super.initState();
@@ -136,7 +144,10 @@ class _GamePageState extends State<GamePage>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
+    _linkSub = widget.links.incoming.listen(_challengeArrived);
+
     unawaited(_load());
+    unawaited(_openingLink());
     unawaited(session.sound.init());
     unawaited(session.haptics.init());
     unawaited(session.notifications.init());
@@ -181,6 +192,7 @@ class _GamePageState extends State<GamePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_linkSub?.cancel());
     session.removeListener(_redraw);
     demo.removeListener(_redraw);
     effects.removeListener(_redraw);
@@ -260,6 +272,35 @@ class _GamePageState extends State<GamePage>
     if (code != null && mounted) {
       _startSeeded(() => session.startChallenge(code));
     }
+  }
+
+  /// The link the app was opened with, if it was opened with one.
+  Future<void> _openingLink() async {
+    final code = await widget.links.initial();
+    if (code != null) await _challengeArrived(code);
+  }
+
+  /// A challenge link, from a cold start or from a tap while the game
+  /// was already open.
+  ///
+  /// A link decides *what* to play, never *when*. Landing on the menu or
+  /// on a finished run costs nothing, so it just starts; landing on a
+  /// live run would throw it away, so that one asks first. A run counts
+  /// as live even while paused — backgrounding the game to tap the link
+  /// is exactly how this happens, and coming back to find the run gone
+  /// would be the game doing it, not the player.
+  Future<void> _challengeArrived(ChallengeCode code) async {
+    if (!mounted) return;
+    final live = !showIntro && engine.phase != GamePhase.gameOver;
+    if (live) {
+      session.pause();
+      final play = await showDialog<bool>(
+        context: context,
+        builder: (context) => ChallengeArrivedDialog(code: code),
+      );
+      if (play != true || !mounted) return;
+    }
+    _startSeeded(() => session.startChallenge(code));
   }
 
   Future<void> _editName() async {

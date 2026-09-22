@@ -16,6 +16,12 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   fill the screen edge to edge; the cells are just sized to fit.
 
 ### Added
+- Challenge links. Sharing a challenge now sends a link as well as the code,
+  and tapping it opens the game straight into that exact board. ENTER CODE
+  takes a link too — or the whole message it came in, so you can paste what
+  your friend sent without picking the code out of it first. A link that turns
+  up while you are mid-run asks before it takes the run: the run is yours, and
+  a message someone else sent is not a good enough reason to end it.
 - Race yourself on the daily. Your best run of the day comes back as a faint
   ghost snake running the board alongside you, and the daily card says the
   score to beat. It only ever shows on the board it was set on.

@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'game/challenge_links.dart';
 import 'game/crash_reporter.dart';
 import 'game/firestore_score_board.dart';
 import 'game/high_score_store.dart';
@@ -43,7 +45,15 @@ Future<void> _runApp(CrashReporter reporter) async {
   // never can, offline or with no Firebase config) the game has no boards.
   final online = FirebaseScoreBoard();
   unawaited(online.connect());
-  runApp(HisscoreApp(highScoreStore: store, onlineScores: online));
+  // Only Android answers the links channel; everywhere else behaves as
+  // if no link ever arrives rather than waiting on a channel that will
+  // never reply.
+  final links = defaultTargetPlatform == TargetPlatform.android
+      ? PlatformChallengeLinks()
+      : const NoChallengeLinks();
+  runApp(
+    HisscoreApp(highScoreStore: store, onlineScores: online, links: links),
+  );
 }
 
 class HisscoreApp extends StatelessWidget {
@@ -52,6 +62,7 @@ class HisscoreApp extends StatelessWidget {
     required this.highScoreStore,
     this.engineFactory,
     this.onlineScores = const NoopOnlineScoreBoard(),
+    this.links = const NoChallengeLinks(),
   });
 
   final HighScoreStore highScoreStore;
@@ -59,6 +70,9 @@ class HisscoreApp extends StatelessWidget {
   /// The global boards; none unless a backend is configured.
   final OnlineScoreBoard onlineScores;
   final SnakeEngine Function()? engineFactory;
+
+  /// Where challenge links tapped outside the game come in from.
+  final ChallengeLinks links;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +91,7 @@ class HisscoreApp extends StatelessWidget {
         highScoreStore: highScoreStore,
         engineFactory: engineFactory,
         onlineScores: onlineScores,
+        links: links,
       ),
     );
   }

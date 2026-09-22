@@ -3,7 +3,8 @@
 Goal: make Hisscore the next viral casual game. Order is by impact per effort.
 
 **Status as of 2026-09-22.** Phases 1, 2 and 4 are done. Phase 3 is done except server-side score
-verification and seed links. Phase 5 is two of five. `[x]` done and
+verification, and seed links are done but cannot be verified App Links until the app is on Play.
+Phase 5 is two of five. `[x]` done and
 merged, `[ ]` not done, `[~]` deliberately changed or partly done. Each line ends with where it
 landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
 
@@ -51,7 +52,14 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
       **The client half is done** (#46): `RunLog` records a run as a seed plus the turns that were
       applied, and a replay recomputes the score rather than trusting it. What remains is the server
       — a Cloud Function that replays the log (Blaze plan).
-- [ ] Tappable seed links (`?seed=` or an app link). Codes must be typed or pasted today.
+- [~] **Tappable seed links** (#51). Two shapes, because neither works alone. `hisscore://c/CODE`
+      always opens the app but almost nothing linkifies a custom scheme, so the shared link is
+      `https://oasis-forge.github.io/Hisscore/c/?k=CODE`, which everything linkifies and which lands
+      on a page that shows the code and offers the `hisscore://` one. ENTER CODE now takes a link, or
+      a whole pasted message, as readily as a code. **Not yet a verified App Link**: that needs
+      `assetlinks.json` at the domain root — `oasis-forge.github.io`, not the project page — and the
+      Play signing fingerprint, which will not exist until the app is on Play. Until then the https
+      link opens the browser, which is why the page exists. Tracked in RELEASE.md.
 - [x] Make all-time boards comparable (#48). Every run now gets the same *amount* of board — the
       daily's 600 cells — with the shape following the screen, instead of 20 columns and as many
       rows as the phone was tall. A tall phone used to get 20x43 and a tablet 20x27, 60% apart, on
