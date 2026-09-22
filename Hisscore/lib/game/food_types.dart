@@ -60,7 +60,7 @@ enum FoodType {
   /// avoid.
   String get effect => switch (this) {
     FoodType.apple => 'GROW  ·  +10',
-    FoodType.star => 'NO GROWTH  ·  +50',
+    FoodType.star => 'RIPENS FROM +50 TO +150',
     FoodType.shield => 'SURVIVE ONE HIT',
     FoodType.speedBurst => 'DOUBLE SPEED, BRIEFLY',
     FoodType.shrink => 'LOSE 2 SEGMENTS',
