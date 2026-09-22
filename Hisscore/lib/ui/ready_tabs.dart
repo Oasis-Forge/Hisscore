@@ -251,6 +251,8 @@ class ReadyStatsTab extends StatelessWidget {
     this.mode = GameMode.classic,
     this.playerName = '',
     this.onEditName,
+    this.optIn,
+    this.onOptInChanged,
   });
 
   final GameStats stats;
@@ -273,6 +275,12 @@ class ReadyStatsTab extends StatelessWidget {
   final GameMode mode;
   final String playerName;
   final VoidCallback? onEditName;
+
+  /// Whether scores are going to the public boards. Null means the
+  /// player has not been asked yet, which reads the same as off here —
+  /// nothing is being sent either way.
+  final bool? optIn;
+  final ValueChanged<bool>? onOptInChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +347,31 @@ class ReadyStatsTab extends StatelessWidget {
               style: RetroText.pixel(size: 7, color: RetroColors.zenBlue),
             ),
           ),
+          // The same decision the game asks for once, always changeable
+          // and always where the boards are.
+          if (onOptInChanged != null) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => onOptInChanged!(!(optIn ?? false)),
+              child: Semantics(
+                button: true,
+                label: optIn == true
+                    ? 'Sending your scores to the boards. Tap to stop.'
+                    : 'Not sending your scores. Tap to start.',
+                child: Text(
+                  optIn == true
+                      ? 'SENDING YOUR SCORES  [ON]'
+                      : 'SENDING YOUR SCORES  [OFF]',
+                  style: RetroText.pixel(
+                    size: 7,
+                    color: optIn == true
+                        ? RetroColors.phosphor
+                        : RetroColors.metal,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );

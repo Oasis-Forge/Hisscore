@@ -95,7 +95,7 @@ void main() {
         onlineScores: board,
         engineFactory: () => SnakeEngine(random: Random(1)),
         now: () => DateTime(2026, 9, 21),
-      );
+      )..leaderboardOptIn = true;
       session.primaryAction();
       while (session.engine.phase == GamePhase.running) {
         session.onTicker();
@@ -115,7 +115,7 @@ void main() {
         onlineScores: board,
         engineFactory: () => SnakeEngine(random: Random(1)),
         now: () => DateTime(2026, 9, 21),
-      );
+      )..leaderboardOptIn = true;
       session.primaryAction();
       while (session.engine.phase == GamePhase.running) {
         session.onTicker();

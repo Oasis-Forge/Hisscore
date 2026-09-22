@@ -185,6 +185,7 @@ void main() {
         onlineScores: online,
       );
       await session.load();
+      session.leaderboardOptIn = true;
       session.selectedMode = GameMode.timeAttack;
       session.primaryAction();
       session.engine.score = 640;

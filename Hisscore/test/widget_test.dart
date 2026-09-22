@@ -385,24 +385,57 @@ void main() {
   // ═══════════════════════════════════════════════════
 
   test('the play grid takes the shape of the screen', () {
-    // Portrait phone: 20 across, taller than it is wide.
+    // Portrait phone: taller than it is wide.
     final portrait = boardGridFor(const Size(390, 844));
-    expect(portrait.columns, 20);
     expect(portrait.rows, greaterThan(portrait.columns));
 
     // Landscape flips it.
     final landscape = boardGridFor(const Size(844, 390));
-    expect(landscape.rows, 20);
     expect(landscape.columns, greaterThan(landscape.rows));
 
     // A square window stays square.
     final square = boardGridFor(const Size(500, 500));
-    expect(square.columns, square.rows);
+    expect((square.columns - square.rows).abs(), lessThanOrEqualTo(1));
 
     // A degenerate size still returns something playable.
     final empty = boardGridFor(Size.zero);
     expect(empty.columns, greaterThan(0));
     expect(empty.rows, greaterThan(0));
+  });
+
+  test('and the same amount of board on every screen', () {
+    // The reason this matters: these all share one all-time board. The
+    // old rule pinned 20 columns and let the rows follow, so a tall
+    // phone played 20x43 and a short one 20x27 — 60% more room, ranked
+    // against each other.
+    const screens = [
+      Size(390, 844), // a tall modern phone
+      Size(414, 736), // a shorter one
+      Size(768, 1024), // a tablet
+      Size(360, 640), // a small phone
+      Size(844, 390), // landscape
+    ];
+
+    for (final screen in screens) {
+      final grid = boardGridFor(screen);
+      final cells = grid.columns * grid.rows;
+      expect(
+        (cells - targetBoardCells).abs() / targetBoardCells,
+        lessThan(0.06),
+        reason: '$screen gave ${grid.columns}x${grid.rows} = $cells cells',
+      );
+    }
+  });
+
+  test('and still roughly the shape of the screen it fills', () {
+    for (final screen in const [Size(390, 844), Size(768, 1024)]) {
+      final grid = boardGridFor(screen);
+      final wanted = screen.height / screen.width;
+      final got = grid.rows / grid.columns;
+      // Cells are square-ish, not square: holding the area fixed means
+      // the shape can only be approximated.
+      expect((got - wanted).abs() / wanted, lessThan(0.2), reason: '$screen');
+    }
   });
 }
 

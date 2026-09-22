@@ -4,6 +4,17 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 
 ## [Unreleased]
 
+### Changed
+- **Your scores are not sent anywhere unless you say so.** The first time you
+  finish a run worth sending, the game asks — and until you answer, and if you
+  answer no, nothing about you leaves the phone. You can change your mind any
+  time under SENDING YOUR SCORES on the STATS tab. Everything except the global
+  boards works either way.
+- Every phone now plays the same amount of board. The grid used to be 20 wide
+  with as many rows as your screen was tall, which handed a tall phone 60% more
+  room than a short one — and then put both on the same leaderboard. Runs still
+  fill the screen edge to edge; the cells are just sized to fit.
+
 ### Added
 - Race yourself on the daily. Your best run of the day comes back as a faint
   ghost snake running the board alongside you, and the daily card says the

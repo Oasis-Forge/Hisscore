@@ -29,6 +29,8 @@ class IntroPanel extends StatelessWidget {
     required this.onEnterCode,
     required this.online,
     required this.playerName,
+    this.optIn,
+    this.onOptInChanged,
     required this.onEditName,
     required this.statsView,
     required this.onStatsViewChanged,
@@ -59,6 +61,11 @@ class IntroPanel extends StatelessWidget {
   final VoidCallback onEnterCode;
   final OnlineScoreBoard online;
   final String playerName;
+
+  /// Whether scores are going to the public boards, and the way to
+  /// change it. Null means the player has not been asked.
+  final bool? optIn;
+  final ValueChanged<bool>? onOptInChanged;
   final VoidCallback onEditName;
   final StatsView statsView;
   final ValueChanged<StatsView> onStatsViewChanged;
@@ -137,6 +144,8 @@ class IntroPanel extends StatelessWidget {
                       mode: selectedMode,
                       playerName: playerName,
                       onEditName: onEditName,
+                      optIn: optIn,
+                      onOptInChanged: onOptInChanged,
                       view: statsView,
                       onViewChanged: onStatsViewChanged,
                       progress: progress,

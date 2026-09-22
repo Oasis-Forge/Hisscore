@@ -40,8 +40,19 @@ class GameBoardView extends StatelessWidget {
   final ParticleSystem particles;
   final ScreenShakeController shake;
   final List<FloatingLabel> labels;
-  final double levelFlashOpacity;
-  final double deathFlashOpacity;
+
+  /// The two timed flashes, read as functions rather than taken as
+  /// numbers.
+  ///
+  /// A number is a snapshot of the moment the page last rebuilt, and the
+  /// page only rebuilds when something notifies it. After a run ends
+  /// nothing does — so the death flash froze part-faded and left the
+  /// whole game-over card washed red. A player with no network saw that
+  /// every time, because a board answering was the only thing that
+  /// happened to rebuild the page afterwards. Read inside the builder
+  /// below, they fade on the animation that is already running.
+  final ValueGetter<double> levelFlashOpacity;
+  final ValueGetter<double> deathFlashOpacity;
   final void Function(Direction) onSwipe;
 
   /// The pause or game-over card, when one is showing.
@@ -78,12 +89,12 @@ class GameBoardView extends StatelessWidget {
                 ghostPrevious: ghostPrevious,
               ),
             ),
-            if (levelFlashOpacity > 0) _buildLevelGlow(),
+            if (levelFlashOpacity() > 0) _buildLevelGlow(),
             for (final label in labels)
               FloatingLabelView(key: ValueKey(label.id), label: label),
             ?overlay,
             if (countdown > 0) ResumeCountdown(seconds: countdown),
-            if (deathFlashOpacity > 0) _buildDeathFlash(),
+            if (deathFlashOpacity() > 0) _buildDeathFlash(),
           ],
         );
       },
@@ -100,7 +111,7 @@ class GameBoardView extends StatelessWidget {
             radius: 0.95,
             colors: [
               Colors.transparent,
-              RetroColors.amber.withValues(alpha: 0.6 * levelFlashOpacity),
+              RetroColors.amber.withValues(alpha: 0.6 * levelFlashOpacity()),
             ],
             stops: const [0.55, 1.0],
           ),
@@ -113,7 +124,7 @@ class GameBoardView extends StatelessWidget {
   Widget _buildDeathFlash() {
     return IgnorePointer(
       child: ColoredBox(
-        color: RetroColors.cherry.withValues(alpha: 0.4 * deathFlashOpacity),
+        color: RetroColors.cherry.withValues(alpha: 0.4 * deathFlashOpacity()),
         child: const SizedBox.expand(),
       ),
     );

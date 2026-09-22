@@ -271,8 +271,41 @@ class GameSession extends ChangeNotifier {
     playerName = await store.loadPlayerName();
     progress = await store.loadProgress();
     savedGhost = await store.loadDailyGhost();
+    leaderboardOptIn = await store.loadLeaderboardOptIn();
     loaded = true;
     _notify();
+  }
+
+  // ─── Going on the boards ──────────────────────────
+
+  /// Whether the player agreed to their name and score going on the
+  /// public boards. **Null means they have not been asked yet**, and
+  /// nothing is sent in that state.
+  bool? leaderboardOptIn;
+
+  /// A finished run had somewhere to go and was held back for want of
+  /// an answer. The page owes the player the question.
+  bool _submissionHeld = false;
+
+  /// Whether the game owes the player a decision right now.
+  ///
+  /// True only after a run that would actually have been submitted, so
+  /// the question is asked in the one moment it means something rather
+  /// than as a dialog on first launch that everybody dismisses.
+  bool get owesLeaderboardChoice => leaderboardOptIn == null && _submissionHeld;
+
+  /// Records the answer, and sends the run that was waiting on it.
+  ///
+  /// The engine still holds the finished run at this point — the card
+  /// is on screen — so a yes can submit the score the player was just
+  /// asked about, rather than making them play another to be counted.
+  Future<void> setLeaderboardOptIn(bool value) async {
+    leaderboardOptIn = value;
+    await store.saveLeaderboardOptIn(value);
+    final held = _submissionHeld;
+    _submissionHeld = false;
+    _notify();
+    if (value && held) await _submitOnline();
   }
 
   // ─── The ghost ────────────────────────────────────
@@ -750,6 +783,13 @@ class GameSession extends ChangeNotifier {
   /// or a failed request must never get in the way of the game.
   Future<void> _submitOnline() async {
     if (!onlineScores.available || engine.score <= 0) return;
+    // Nothing goes up until the player has actually said yes. Null is
+    // "not asked", not "yes": this run waits, and the page asks.
+    if (leaderboardOptIn != true) {
+      _submissionHeld = leaderboardOptIn == null;
+      _notify();
+      return;
+    }
     final name = displayName;
     final score = engine.score;
     try {
