@@ -257,5 +257,25 @@ void main() {
         expect(find.text('$shown / ${quest.target}'), findsOneWidget);
       }
     });
+
+    testWidgets('a barely-started bar is still a bar', (tester) async {
+      // The track keeps its width whatever the fill is. A bar that
+      // shrink-wraps its own progress shows no remainder, so 1 of 100
+      // renders as a speck with a border round it rather than a bar
+      // that has barely started.
+      await pump(tester, const ScoreVsBest(score: 1, best: 100));
+      await tester.pumpAndSettle();
+      final nearlyEmpty = tester
+          .getSize(find.byType(FractionallySizedBox))
+          .width;
+
+      await pump(tester, const ScoreVsBest(score: 99, best: 100));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byType(FractionallySizedBox)).width,
+        nearlyEmpty,
+      );
+      expect(nearlyEmpty, greaterThan(100));
+    });
   });
 }

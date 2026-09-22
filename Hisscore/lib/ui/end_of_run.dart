@@ -219,6 +219,10 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Without a width the container shrink-wraps the filled part and
+      // the empty remainder disappears, so a bar at 1% reads as a
+      // speck rather than a bar that has barely started.
+      width: double.infinity,
       height: 6,
       decoration: BoxDecoration(
         color: RetroColors.voidBg,

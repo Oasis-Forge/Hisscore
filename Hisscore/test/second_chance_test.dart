@@ -8,6 +8,7 @@ import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/online_scores.dart';
 import 'package:hisscore/game/snake_engine.dart';
 import 'package:hisscore/main.dart';
+import 'package:hisscore/ui/game_overlay.dart';
 import 'package:hisscore/ui/run_effects.dart';
 import 'package:hisscore/ui/second_chance.dart';
 
@@ -436,6 +437,14 @@ void main() {
 
       expect(find.text('GAME OVER'), findsNothing);
       expect(find.byType(ResumeCountdown), findsOneWidget);
+
+      // A revive parks the engine in `paused`, but the player did not
+      // ask for a pause: the card and its live buttons must not be
+      // sitting under the see-through countdown, where a stray tap
+      // would bank the run and skip the count.
+      expect(find.byType(GameOverlay), findsNothing);
+      expect(find.text('RESUME'), findsNothing);
+      expect(find.text('MENU'), findsNothing);
 
       // 3, 2, 1, and away.
       await tester.pump(const Duration(seconds: 3));
