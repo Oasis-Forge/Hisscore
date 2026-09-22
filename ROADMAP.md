@@ -4,7 +4,7 @@ Goal: make Hisscore the next viral casual game. Order is by impact per effort.
 
 **Status as of 2026-09-22.** Phases 1, 2 and 4 are done. Phase 3 is done except server-side score
 verification, and seed links are done but cannot be verified App Links until the app is on Play.
-Phase 5 is two of five. `[x]` done and
+Phase 5 is three of five. `[x]` done and
 merged, `[ ]` not done, `[~]` deliberately changed or partly done. Each line ends with where it
 landed. New developer: read [docs/HANDOFF.md](docs/HANDOFF.md) first.
 
@@ -81,12 +81,16 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
 - [x] Milestones: 21 local firsts paying XP once, some granting a rank on the menu (#45). Not on the
       original plan; added by the fun track.
 
-## Phase 5: New modes and multiplayer: TWO OF FIVE
+## Phase 5: New modes and multiplayer: THREE OF FIVE
 
 - [x] Time Attack (60 seconds) on the fixed grid, with a double-score window and its own board (#45)
 - [x] Ghost race from a recorded replay (#46) — the same input log server verification needs
 - [ ] Battle Royale: shrinking arena with AI snakes
-- [ ] Async head-to-head on a shared seed (challenge codes are the start of this)
+- [x] Async head-to-head on a shared seed (#52). The sender's run rides inside the link as a
+      delta-encoded list of turns — about 300 characters for a long run — so the friend who opens it
+      races their snake on the same board and gets a VS card at the end. **No server**: the run is in
+      the link, and neither player has to be online, let alone online at once. It is the same
+      `RunLog` machinery as the daily ghost and the same one server verification will replay.
 - [ ] Real-time 2-player, local first, online later
 
 ## Cross-cutting

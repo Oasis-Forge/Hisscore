@@ -13,6 +13,7 @@ import 'notification_service.dart';
 import 'online_scores.dart';
 import 'quests.dart';
 import 'review_prompter.dart';
+import 'rival_run.dart';
 import 'run_log.dart';
 import 'run_standing.dart';
 import 'snake_engine.dart';
@@ -339,11 +340,54 @@ class GameSession extends ChangeNotifier {
 
   bool get _ghostRunning => ghost != null && ghost!.phase != GamePhase.gameOver;
 
-  /// The score to beat, when there is a ghost on today's board.
-  int? get ghostScore => todaysGhost?.score;
+  /// The friend's run on the challenge being played, when their link
+  /// carried one. Null on the daily and on a challenge nobody raced.
+  RivalRun? rival;
+
+  /// The run to race: on the daily, the best one kept on this device;
+  /// on a challenge, whoever sent it.
+  ///
+  /// One ghost, two sources. The racing machinery below neither knows
+  /// nor cares which — a replay is a replay.
+  RunLog? get _ghostToRace {
+    final code = challenge;
+    if (code != null) return rival?.toLog(code);
+    return todaysGhost;
+  }
+
+  /// The score to beat, when there is anything to beat it.
+  int? get ghostScore => challenge != null ? rival?.score : todaysGhost?.score;
+
+  /// How the run stands against the friend who sent the challenge.
+  ///
+  /// Live during the run, not only at the end, so the HUD could show it
+  /// mid-race. Null whenever there is nobody to be measured against.
+  ({int yours, int theirs, String name, bool won, bool drew})? get headToHead {
+    final them = rival;
+    if (them == null || challenge == null) return null;
+    return (
+      yours: engine.score,
+      theirs: them.score,
+      name: them.name,
+      won: engine.score > them.score,
+      drew: engine.score == them.score,
+    );
+  }
+
+  /// This run, in the shape that rides in a link back to them.
+  RivalRun? get myRun =>
+      challenge == null ? null : RivalRun.of(engine, name: displayName);
+
+  /// A rival kept from the last time this challenge was played, if any.
+  ///
+  /// Asked *before* [startChallenge] rather than inside it, because a
+  /// ghost has to be there when the run begins — a race that joins
+  /// halfway through is not one.
+  Future<RivalRun?> savedRivalFor(ChallengeCode code) =>
+      store.loadRival(code.text);
 
   void _startGhost() {
-    final log = todaysGhost;
+    final log = _ghostToRace;
     ghost = null;
     _ghostSteer = 0;
     if (log == null) return;
@@ -459,6 +503,7 @@ class GameSession extends ChangeNotifier {
       engine.mode = selectedMode;
       isDailyRun = false;
       challenge = null;
+      rival = null;
       ghost = null;
     }
     engine.start();
@@ -484,6 +529,7 @@ class GameSession extends ChangeNotifier {
     selectedMode = GameMode.classic;
     isDailyRun = true;
     challenge = null;
+    rival = null;
     newHighScore = false;
     outcome = null;
     streakOutcome = null;
@@ -499,7 +545,10 @@ class GameSession extends ChangeNotifier {
 
   /// Starts the game a challenge code names: its mode, its seed, and the
   /// daily's fixed grid, so everyone playing the code plays one board.
-  void startChallenge(ChallengeCode code) {
+  /// [rival] is the sender's own run, when their link carried one. It is
+  /// kept, so backing out to the menu and tapping the challenge again
+  /// still races them — the link that brought it is not coming back.
+  void startChallenge(ChallengeCode code, {RivalRun? rival}) {
     _recordRunIfNeeded();
     _resetRunFlags();
     _ticker?.cancel();
@@ -512,8 +561,9 @@ class GameSession extends ChangeNotifier {
     selectedMode = code.mode;
     isDailyRun = false;
     challenge = code;
-    // Nothing to race outside the daily.
-    ghost = null;
+    this.rival = rival;
+    if (rival != null) unawaited(store.saveRival(code.text, rival));
+    _startGhost();
     newHighScore = false;
     outcome = null;
     streakOutcome = null;
@@ -538,6 +588,7 @@ class GameSession extends ChangeNotifier {
     standing = null;
     isDailyRun = false;
     challenge = null;
+    rival = null;
     _notify();
   }
 

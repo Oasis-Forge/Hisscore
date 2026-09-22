@@ -35,7 +35,7 @@ class _EnterCodeDialogState extends State<EnterCodeDialog> {
   }
 
   void _submit() {
-    final parsed = ChallengeLink.parse(_controller.text);
+    final parsed = ChallengeLink.read(_controller.text);
     if (parsed == null) {
       setState(() => _invalid = true);
     } else {
@@ -100,12 +100,20 @@ class _EnterCodeDialogState extends State<EnterCodeDialog> {
 /// message, not a restart button — so the run in progress wins unless
 /// they say otherwise. Pops true to play the challenge.
 class ChallengeArrivedDialog extends StatelessWidget {
-  const ChallengeArrivedDialog({super.key, required this.code});
+  const ChallengeArrivedDialog({super.key, required this.challenge});
 
-  final ChallengeCode code;
+  final Challenge challenge;
 
   @override
   Widget build(BuildContext context) {
+    final code = challenge.code;
+    final rival = challenge.rival;
+    // Who sent it and what they scored, when the link said. That is the
+    // difference between "a board" and "a race", and it is the thing
+    // most likely to decide the answer.
+    final from = rival == null
+        ? ''
+        : '\n${rival.name.isEmpty ? 'THEY' : rival.name} SCORED ${rival.score}';
     return AlertDialog(
       backgroundColor: RetroColors.screen,
       shape: RoundedRectangleBorder(
@@ -126,7 +134,7 @@ class ChallengeArrivedDialog extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '${code.mode.label}\nTHIS ENDS YOUR RUN',
+            '${code.mode.label}$from\nTHIS ENDS YOUR RUN',
             style: RetroText.pixel(size: 8, color: RetroColors.phosphorDim),
           ),
         ],

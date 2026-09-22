@@ -46,6 +46,7 @@
     word-break: break-all;
   }
   .mode { color: var(--phosphor-dim); font-size: 0.7rem; letter-spacing: 0.3em; margin-top: 0.75rem; }
+  .score { color: var(--amber); font-size: 0.8rem; letter-spacing: 0.15em; margin-top: 0.9rem; }
   a.button {
     display: block;
     margin-top: 1.75rem;
@@ -77,11 +78,16 @@
   <div id="found" hidden>
     <code class="code" id="code"></code>
     <div class="mode" id="mode"></div>
+    <div class="score" id="score" hidden></div>
     <a class="button" id="open" href="#">OPEN IN HISSCORE</a>
     <p class="how">
       No app yet? The code above is the whole challenge — the same board,
       the same food, the same obstacles. Open Hisscore, tap
       <b>ENTER CODE</b> and paste it in.
+    </p>
+    <p class="how" id="race-note" hidden>
+      Opening the link itself is better than the code alone: their run
+      comes with it, and you race their snake down the same board.
     </p>
   </div>
 
@@ -132,10 +138,33 @@
   var raw = params.get('k') || window.location.hash.slice(1);
   var code = parse(raw);
 
+  // The sender's own run, when the link carried one. Only the score is
+  // read here — the turns are for the game to replay, and this page
+  // passes them straight through without pretending to understand them.
+  var rival = params.get('r');
+  var theirScore = null;
+  var theirName = '';
+  if (rival) {
+    var fields = rival.split('~');
+    if (fields.length >= 3 && /^-?\d+$/.test(fields[0])) {
+      theirScore = parseInt(fields[0], 10);
+      theirName = fields.slice(3).join('~').trim();
+    }
+  }
+
   if (code) {
     document.getElementById('code').textContent = code.text;
     document.getElementById('mode').textContent = code.mode;
-    document.getElementById('open').href = 'hisscore://c/' + code.text;
+    // The run goes on to the app untouched, so opening from here is the
+    // same race as opening the link directly.
+    document.getElementById('open').href =
+      'hisscore://c/' + code.text + (rival ? '?r=' + encodeURIComponent(rival) : '');
+    if (theirScore !== null) {
+      document.getElementById('score').textContent =
+        (theirName || 'THEY') + ' SCORED ' + theirScore;
+      document.getElementById('score').hidden = false;
+      document.getElementById('race-note').hidden = false;
+    }
     document.getElementById('found').hidden = false;
   } else {
     // A link that lost characters on the way here and a link that never

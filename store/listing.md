@@ -145,6 +145,14 @@ storage and never leaves the phone. The release build requests no runtime
 permissions other than `POST_NOTIFICATIONS`, used solely for the local
 daily-streak reminder scheduled on-device.
 
+**Sharing.** A challenge link the player sends contains their display
+name and the record of the run, so a friend's game can replay it. That
+is the player sending a message through an app they picked; nothing
+about it reaches us, and no server is involved. It is not data
+collection and does not belong on the Data safety form — but say it
+plainly in the policy, which [`docs/index.html`](../docs/index.html)
+now does.
+
 **Still worth having:** an in-app way to delete a board row that has
 already been set, rather than only stopping future ones. Removal is by
 email today. Tracked in RELEASE.md.

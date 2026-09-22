@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../game/attract_demo.dart';
 import '../game/challenge_code.dart';
+import '../game/challenge_link.dart';
 import '../game/challenge_links.dart';
 import '../game/game_session.dart';
 import '../game/high_score_store.dart';
@@ -98,7 +99,7 @@ class _GamePageState extends State<GamePage>
   /// can animate the snake between cells instead of jumping.
   DateTime _lastTickAt = DateTime.now();
 
-  StreamSubscription<ChallengeCode>? _linkSub;
+  StreamSubscription<Challenge>? _linkSub;
 
   @override
   void initState() {
@@ -265,19 +266,31 @@ class _GamePageState extends State<GamePage>
 
   /// Asks for a friend's code and, if it is valid, plays it.
   Future<void> _enterCode() async {
-    final code = await showDialog<ChallengeCode>(
+    final code = await showDialog<Challenge>(
       context: context,
       builder: (context) => const EnterCodeDialog(),
     );
-    if (code != null && mounted) {
-      _startSeeded(() => session.startChallenge(code));
-    }
+    if (code != null && mounted) await _play(code);
+  }
+
+  /// Starts a challenge, racing whoever sent it.
+  ///
+  /// A link that carries no run is not necessarily a race with nobody:
+  /// the challenge may have been raced before and the friend's run kept,
+  /// and coming back to it through ENTER CODE should still be a race.
+  /// Looked up before the run starts, because a ghost that joins halfway
+  /// through is not one.
+  Future<void> _play(Challenge challenge) async {
+    final rival =
+        challenge.rival ?? await session.savedRivalFor(challenge.code);
+    if (!mounted) return;
+    _startSeeded(() => session.startChallenge(challenge.code, rival: rival));
   }
 
   /// The link the app was opened with, if it was opened with one.
   Future<void> _openingLink() async {
-    final code = await widget.links.initial();
-    if (code != null) await _challengeArrived(code);
+    final arrived = await widget.links.initial();
+    if (arrived != null) await _challengeArrived(arrived);
   }
 
   /// A challenge link, from a cold start or from a tap while the game
@@ -289,18 +302,18 @@ class _GamePageState extends State<GamePage>
   /// as live even while paused — backgrounding the game to tap the link
   /// is exactly how this happens, and coming back to find the run gone
   /// would be the game doing it, not the player.
-  Future<void> _challengeArrived(ChallengeCode code) async {
+  Future<void> _challengeArrived(Challenge challenge) async {
     if (!mounted) return;
     final live = !showIntro && engine.phase != GamePhase.gameOver;
     if (live) {
       session.pause();
       final play = await showDialog<bool>(
         context: context,
-        builder: (context) => ChallengeArrivedDialog(code: code),
+        builder: (context) => ChallengeArrivedDialog(challenge: challenge),
       );
       if (play != true || !mounted) return;
     }
-    _startSeeded(() => session.startChallenge(code));
+    await _play(challenge);
   }
 
   Future<void> _editName() async {
@@ -618,6 +631,7 @@ class _GamePageState extends State<GamePage>
               newHighScore: session.newHighScore,
               isDailyRun: session.isDailyRun,
               challengeCode: session.challenge?.text,
+              headToHead: session.headToHead,
               outcome: session.outcome,
               dailyDayNumber: session.dailyDayNumber,
               dailyState: session.dailyState,

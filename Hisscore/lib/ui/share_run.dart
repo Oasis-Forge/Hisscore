@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import '../game/challenge_code.dart';
 import '../game/challenge_link.dart';
 import '../game/daily_challenge.dart';
+import '../game/rival_run.dart';
 import '../game/high_score_store.dart';
 import '../game/snake_engine.dart';
 import 'share_card.dart';
@@ -21,6 +22,8 @@ Future<void> shareRun({
   required int dailyDayNumber,
   required DailyState dailyState,
   ChallengeCode? challenge,
+  RivalRun? myRun,
+  RivalRun? against,
 }) async {
   final text = _shareText(
     engine: engine,
@@ -28,6 +31,7 @@ Future<void> shareRun({
     dailyDayNumber: dailyDayNumber,
     dailyState: dailyState,
     challenge: challenge,
+    myRun: myRun,
   );
   final subtitle = _subtitle(
     engine: engine,
@@ -35,6 +39,7 @@ Future<void> shareRun({
     dailyDayNumber: dailyDayNumber,
     dailyState: dailyState,
     challenge: challenge,
+    against: against,
   );
   try {
     List<XFile>? files;
@@ -62,6 +67,7 @@ String _shareText({
   required int dailyDayNumber,
   required DailyState dailyState,
   ChallengeCode? challenge,
+  RivalRun? myRun,
 }) {
   if (isDailyRun) {
     return DailyChallenge.resultText(
@@ -78,9 +84,13 @@ String _shareText({
     // and typed into a dialog the reader has to find first; a link is
     // one tap. The code stays in the line above it for anyone whose
     // messaging app strips links, or who is reading this aloud.
+    //
+    // The run rides along, so what comes back is a race rather than
+    // another board. This is what closes the loop: whoever opens it
+    // runs against this snake, and their share sends theirs back.
     return 'HISCORE challenge ${challenge.text} — ${engine.mode.label}'
         ' — Score ${engine.score} 🐍\n'
-        'Beat it: ${ChallengeLink.web(challenge)}';
+        'Beat it: ${ChallengeLink.web(challenge, rival: myRun)}';
   }
   final level = engine.mode == GameMode.adventure
       ? ' (Level ${engine.level})'
@@ -96,6 +106,7 @@ String _subtitle({
   required int dailyDayNumber,
   required DailyState dailyState,
   ChallengeCode? challenge,
+  RivalRun? against,
 }) {
   if (isDailyRun) {
     final rule = engine.modifier == null
@@ -104,7 +115,16 @@ String _subtitle({
     return 'DAILY #$dailyDayNumber  ·  '
         'STREAK ${dailyState.currentStreak}$rule';
   }
-  if (challenge != null) return '${engine.mode.label}  ·  ${challenge.text}';
+  if (challenge != null) {
+    // On a race, the card names who was being raced rather than the
+    // code. A name means something to the person looking at the
+    // screenshot; the code is already in the text beside it.
+    if (against != null) {
+      final them = against.name.isEmpty ? 'THEM' : against.name;
+      return '${engine.mode.label}  ·  VS $them ${against.score}';
+    }
+    return '${engine.mode.label}  ·  ${challenge.text}';
+  }
   // A run that was brought back says so, next to the score it kept.
   return engine.revived
       ? '${engine.mode.label}  ·  REVIVED'

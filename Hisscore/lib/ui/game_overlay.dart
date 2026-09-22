@@ -21,6 +21,7 @@ class GameOverlay extends StatelessWidget {
     required this.newHighScore,
     required this.isDailyRun,
     this.challengeCode,
+    this.headToHead,
     this.outcome,
     required this.dailyDayNumber,
     required this.dailyState,
@@ -45,6 +46,10 @@ class GameOverlay extends StatelessWidget {
 
   /// The code of a friend-challenge run, shown so it can be passed on.
   final String? challengeCode;
+
+  /// How the run stands against the friend who sent the challenge,
+  /// when one did. Null on everything else.
+  final ({int yours, int theirs, String name, bool won, bool drew})? headToHead;
 
   /// What the run just finished paid out: XP, quests, a new level.
   final RunOutcome? outcome;
@@ -181,6 +186,14 @@ class GameOverlay extends StatelessWidget {
                     Text(
                       'CHALLENGE $challengeCode',
                       style: RetroText.pixel(size: 8, color: RetroColors.amber),
+                    ),
+                  ],
+                  if (headToHead != null) ...[
+                    const SizedBox(height: 10),
+                    HeadToHead(
+                      yours: headToHead!.yours,
+                      theirs: headToHead!.theirs,
+                      name: headToHead!.name,
                     ),
                   ],
                   if (outcome != null) ...[

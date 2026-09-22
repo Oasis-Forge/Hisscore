@@ -239,6 +239,15 @@ RELEASE.md                      pre-launch checklist: read it before shipping
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
   first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.
 - `0` and `O` look alike in that font, which is why challenge codes use Crockford base32.
+- **A friend's run travels inside the link, not through a server.** `RivalRun` leaves out the seed,
+  grid and mode because the challenge code already says all three, and delta-encodes the tick of each
+  turn. Both together are what make a long run about 300 characters instead of thousands. If you add
+  a field, check `rival_run_test.dart`'s length assertion — a link a messaging app truncates arrives
+  looking fine and races wrong, which is why anything over `RivalRun.maxEncodedLength` is dropped and
+  the link goes out as a plain challenge instead.
+- **`ChallengeLink.read` prefers a race over a bare code**, wherever each sits in the text. The share
+  message names the code in prose before it gives the link, so reading left to right finds the code
+  and throws the run away. This was a real bug, caught by a test, not by review.
 - **An https intent-filter without a verified `assetlinks.json` sends the link to the browser**, and
   on Android 12+ it does so silently — no "open with" dialog to hint that the app wanted it. This is
   not a bug in the filter; it is what unverified App Links do. Test a challenge link on a device

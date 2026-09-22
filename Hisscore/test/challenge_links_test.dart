@@ -39,7 +39,7 @@ void main() {
       final links = PlatformChallengeLinks();
       addTearDown(links.dispose);
 
-      expect(await links.initial(), code);
+      expect((await links.initial())?.code, code);
     });
 
     test('is null when the app was opened normally', () async {
@@ -77,14 +77,14 @@ void main() {
       final links = PlatformChallengeLinks();
       addTearDown(links.dispose);
 
-      final seen = <ChallengeCode>[];
+      final seen = <Challenge>[];
       final sub = links.incoming.listen(seen.add);
       addTearDown(sub.cancel);
 
       await platformSends(ChallengeLink.web(code));
       await pumpEventQueue();
 
-      expect(seen, [code]);
+      expect(seen.map((s) => s.code), [code]);
     });
 
     test('a link that is not a challenge is dropped, not surfaced', () async {
@@ -95,7 +95,7 @@ void main() {
       final links = PlatformChallengeLinks();
       addTearDown(links.dispose);
 
-      final seen = <ChallengeCode>[];
+      final seen = <Challenge>[];
       final sub = links.incoming.listen(seen.add);
       addTearDown(sub.cancel);
 
@@ -111,7 +111,7 @@ void main() {
       final links = PlatformChallengeLinks();
       addTearDown(links.dispose);
 
-      final seen = <ChallengeCode>[];
+      final seen = <Challenge>[];
       final sub = links.incoming.listen(seen.add);
       addTearDown(sub.cancel);
 
@@ -120,13 +120,13 @@ void main() {
       await platformSends(ChallengeLink.app(other));
       await pumpEventQueue();
 
-      expect(seen, [code, other]);
+      expect(seen.map((s) => s.code), [code, other]);
     });
 
     test('nothing is delivered after dispose', () async {
       platformOffers(null);
       final links = PlatformChallengeLinks();
-      final seen = <ChallengeCode>[];
+      final seen = <Challenge>[];
       final sub = links.incoming.listen(seen.add);
       addTearDown(sub.cancel);
 

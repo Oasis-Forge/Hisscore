@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'quests.dart';
+import 'rival_run.dart';
 import 'run_log.dart';
 import 'snake_engine.dart';
 
@@ -178,6 +179,20 @@ abstract class HighScoreStore {
   Future<RunLog?> loadDailyGhost();
   Future<void> saveDailyGhost(RunLog log);
 
+  /// The run a friend sent on a challenge, kept so the race survives
+  /// backing out to the menu and coming back — the link that carried it
+  /// is not coming again.
+  ///
+  /// Keyed by the challenge's code text, because a rival on one board
+  /// means nothing on another. Only [maxRivals] are kept, oldest
+  /// dropped: an unbounded pile of other people's runs is not something
+  /// a player ever asked to store.
+  Future<RivalRun?> loadRival(String codeText);
+  Future<void> saveRival(String codeText, RivalRun rival);
+
+  /// How many friends' runs are kept at once.
+  static const maxRivals = 20;
+
   /// Whether the player agreed to their name and score going on the
   /// public boards.
   ///
@@ -186,6 +201,28 @@ abstract class HighScoreStore {
   /// treats null as consent has misread this.
   Future<bool?> loadLeaderboardOptIn();
   Future<void> saveLeaderboardOptIn(bool value);
+}
+
+/// [current] with [codeText]'s run added and the oldest dropped once
+/// there are more than [HighScoreStore.maxRivals].
+///
+/// Both stores call this rather than each doing the bookkeeping, for
+/// the same reason `GameStats.record` exists: they had already drifted
+/// once over what a finished run counts for.
+///
+/// Re-saving a challenge already held moves it to the newest end, so
+/// the one a player keeps coming back to is not the one that falls off.
+Map<String, String> withRival(
+  Map<String, String> current,
+  String codeText,
+  String encoded,
+) {
+  final next = Map<String, String>.from(current)..remove(codeText);
+  next[codeText] = encoded;
+  while (next.length > HighScoreStore.maxRivals) {
+    next.remove(next.keys.first);
+  }
+  return next;
 }
 
 // ─── In-memory (testing) ────────────────────────────
@@ -202,6 +239,7 @@ class InMemoryHighScoreStore implements HighScoreStore {
   String? _playerName;
   PlayerProgress _progress = const PlayerProgress();
   String? _ghost;
+  Map<String, String> _rivals = {};
   bool? _optIn;
 
   @override
@@ -276,6 +314,14 @@ class InMemoryHighScoreStore implements HighScoreStore {
   Future<void> saveDailyGhost(RunLog log) async => _ghost = log.encode();
 
   @override
+  Future<RivalRun?> loadRival(String codeText) async =>
+      RivalRun.decode(_rivals[codeText]);
+
+  @override
+  Future<void> saveRival(String codeText, RivalRun rival) async =>
+      _rivals = withRival(_rivals, codeText, rival.encode());
+
+  @override
   Future<bool?> loadLeaderboardOptIn() async => _optIn;
 
   @override
@@ -296,6 +342,7 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   static const _playerNameKey = 'hisscore.player_name';
   static const _progressKey = 'hisscore.progress';
   static const _ghostKey = 'hisscore.daily_ghost';
+  static const _rivalsKey = 'hisscore.rivals';
   static const _optInKey = 'hisscore.leaderboard_opt_in';
 
   final String key;
@@ -447,6 +494,42 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   Future<void> saveDailyGhost(RunLog log) async {
     await init();
     await _prefs!.setString(_ghostKey, log.encode());
+  }
+
+  /// All saved rivals, oldest first. A JSON object rather than a list
+  /// because order is the only thing a list would add, and `jsonDecode`
+  /// already keeps a document's key order.
+  Map<String, String> get _savedRivals {
+    final raw = _prefs!.getString(_rivalsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final entry in decoded.entries)
+          if (entry.key is String && entry.value is String)
+            entry.key as String: entry.value as String,
+      };
+    } catch (_) {
+      // Unreadable is the same as none: a friend's run is never worth
+      // failing a launch over.
+      return {};
+    }
+  }
+
+  @override
+  Future<RivalRun?> loadRival(String codeText) async {
+    await init();
+    return RivalRun.decode(_savedRivals[codeText]);
+  }
+
+  @override
+  Future<void> saveRival(String codeText, RivalRun rival) async {
+    await init();
+    await _prefs!.setString(
+      _rivalsKey,
+      jsonEncode(withRival(_savedRivals, codeText, rival.encode())),
+    );
   }
 
   @override

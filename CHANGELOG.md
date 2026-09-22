@@ -16,6 +16,11 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
   fill the screen edge to edge; the cells are just sized to fit.
 
 ### Added
+- Race a friend, whenever each of you feels like playing. Sharing a challenge
+  now sends your run with it, so whoever opens the link races your snake down
+  the same board — and the card at the end says who won and by how much. Their
+  share sends theirs back. Nobody has to be online at the same time, and
+  nothing goes through a server: the run travels inside the link.
 - Challenge links. Sharing a challenge now sends a link as well as the code,
   and tapping it opens the game straight into that exact board. ENTER CODE
   takes a link too — or the whole message it came in, so you can paste what

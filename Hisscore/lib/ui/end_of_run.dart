@@ -49,6 +49,60 @@ class ScoreVsBest extends StatelessWidget {
   }
 }
 
+/// This run against the run the friend who sent the challenge set.
+///
+/// The same bar as [ScoreVsBest], for the same reason: the interesting
+/// question is not "what did each of us score" but "how close was it",
+/// and a bar answers that without the player doing arithmetic. The
+/// verdict is said in words underneath, because that is the part they
+/// will repeat to the person they were racing.
+class HeadToHead extends StatelessWidget {
+  const HeadToHead({
+    super.key,
+    required this.yours,
+    required this.theirs,
+    required this.name,
+  });
+
+  final int yours;
+  final int theirs;
+
+  /// Their display name. May be empty — a link from someone who never
+  /// chose one is still a race.
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final won = yours > theirs;
+    final drew = yours == theirs;
+    final them = name.isEmpty ? 'THEM' : name;
+    final fraction = theirs <= 0 ? 1.0 : (yours / theirs).clamp(0.0, 1.0);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _BarRow(
+          label: 'VS $them',
+          trailing: '$yours / $theirs',
+          fraction: fraction,
+          color: won ? RetroColors.food : RetroColors.phosphor,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          won
+              ? 'YOU BEAT $them'
+              : drew
+              ? 'DEAD HEAT'
+              : '${theirs - yours} SHORT OF $them',
+          style: RetroText.pixel(
+            size: 7,
+            color: won ? RetroColors.food : RetroColors.phosphorDim,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// The XP bar, filling from where the player was to where they are.
 class XpBar extends StatelessWidget {
   const XpBar({super.key, required this.outcome});

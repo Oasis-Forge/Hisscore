@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hisscore/game/challenge_code.dart';
+import 'package:hisscore/game/challenge_link.dart';
 import 'package:hisscore/game/challenge_links.dart';
 import 'package:hisscore/game/high_score_store.dart';
 import 'package:hisscore/game/snake_engine.dart';
@@ -14,15 +15,15 @@ class _FakeLinks implements ChallengeLinks {
   _FakeLinks({this.opening});
 
   /// The link the app was "opened with".
-  final ChallengeCode? opening;
+  final Challenge? opening;
 
-  final _controller = StreamController<ChallengeCode>.broadcast();
+  final _controller = StreamController<Challenge>.broadcast();
   bool _asked = false;
 
-  void send(ChallengeCode code) => _controller.add(code);
+  void send(Challenge challenge) => _controller.add(challenge);
 
   @override
-  Future<ChallengeCode?> initial() async {
+  Future<Challenge?> initial() async {
     // Answered once, as the real one is.
     if (_asked) return null;
     _asked = true;
@@ -30,7 +31,7 @@ class _FakeLinks implements ChallengeLinks {
   }
 
   @override
-  Stream<ChallengeCode> get incoming => _controller.stream;
+  Stream<Challenge> get incoming => _controller.stream;
 
   @override
   void dispose() => _controller.close();
@@ -41,6 +42,7 @@ void main() {
   // no other — so finding one proves both that a run started and that
   // it is the mode the link named, rather than the menu's default.
   const code = ChallengeCode(mode: GameMode.timeAttack, seed: 31337);
+  const challenge = (code: code, rival: null);
 
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -50,10 +52,7 @@ void main() {
         );
   });
 
-  Future<_FakeLinks> pumpGame(
-    WidgetTester tester, {
-    ChallengeCode? opening,
-  }) async {
+  Future<_FakeLinks> pumpGame(WidgetTester tester, {Challenge? opening}) async {
     final links = _FakeLinks(opening: opening);
     addTearDown(links.dispose);
     await tester.pumpWidget(
@@ -68,7 +67,7 @@ void main() {
   testWidgets('a link the app was opened with starts that challenge', (
     tester,
   ) async {
-    await pumpGame(tester, opening: code);
+    await pumpGame(tester, opening: challenge);
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('PRESS START'), findsNothing);
@@ -79,7 +78,7 @@ void main() {
     final links = await pumpGame(tester);
     expect(find.text('PRESS START'), findsOneWidget);
 
-    links.send(code);
+    links.send(challenge);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -96,7 +95,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(TimerRing), findsNothing, reason: 'a classic run');
 
-      links.send(code);
+      links.send(challenge);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       return links;

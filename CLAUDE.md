@@ -243,6 +243,23 @@ A link decides *what* to play, never *when*: arriving on the menu or a
 finished run it just starts, and on a live run (paused counts — tapping
 the link is how the run got paused) it pauses and asks first.
 
+### Racing a friend
+
+`lib/game/rival_run.dart` is the sender's run, small enough to ride in a
+link: name, ticks, score and turns, with the ticks delta-encoded. It
+carries no seed, grid or mode because the challenge code already says
+all three — that omission plus the deltas is the difference between ~300
+characters and something no messaging app will carry. Above
+`RivalRun.maxEncodedLength` the link goes out as a plain challenge
+instead; a truncated run would arrive looking fine and race wrong.
+
+There is **no server in this**. The run is in the link, so neither
+player has to be online, let alone at the same time. `GameSession.rival`
+feeds the same ghost machinery the daily uses — `_ghostToRace` is the
+only thing that knows which source it came from — and `headToHead` is
+the result. A rival is kept per code (`HighScoreStore.loadRival`) so the
+race survives backing out to the menu.
+
 **The https link is not a verified App Link yet**, so Android sends it to
 the browser. `docs/c/index.html` is the page it lands on; it validates
 the code with the same checksum and offers the `hisscore://` link, which

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'challenge_code.dart';
 import 'challenge_link.dart';
 
 /// Where challenge links come in from.
@@ -15,10 +14,10 @@ abstract class ChallengeLinks {
   /// The link the app was opened with, if it was opened with one.
   /// Answered once — a second call gets null, because the challenge has
   /// already been started by then.
-  Future<ChallengeCode?> initial();
+  Future<Challenge?> initial();
 
   /// Links that arrive while the app is already running.
-  Stream<ChallengeCode> get incoming;
+  Stream<Challenge> get incoming;
 
   void dispose();
 }
@@ -29,10 +28,10 @@ class NoChallengeLinks implements ChallengeLinks {
   const NoChallengeLinks();
 
   @override
-  Future<ChallengeCode?> initial() async => null;
+  Future<Challenge?> initial() async => null;
 
   @override
-  Stream<ChallengeCode> get incoming => const Stream.empty();
+  Stream<Challenge> get incoming => const Stream.empty();
 
   @override
   void dispose() {}
@@ -55,16 +54,16 @@ class PlatformChallengeLinks implements ChallengeLinks {
   static const channelName = 'com.oasisforge.hisscore/links';
 
   final MethodChannel _channel;
-  final _controller = StreamController<ChallengeCode>.broadcast();
+  final _controller = StreamController<Challenge>.broadcast();
 
   @override
-  Stream<ChallengeCode> get incoming => _controller.stream;
+  Stream<Challenge> get incoming => _controller.stream;
 
   @override
-  Future<ChallengeCode?> initial() async {
+  Future<Challenge?> initial() async {
     try {
       final link = await _channel.invokeMethod<String>('initialLink');
-      return link == null ? null : ChallengeLink.parse(link);
+      return link == null ? null : ChallengeLink.read(link);
     } catch (e) {
       // A missing channel is the normal case off Android, and a link
       // that never arrives is not worth a crash on any platform.
@@ -75,11 +74,11 @@ class PlatformChallengeLinks implements ChallengeLinks {
 
   Future<void> _onCall(MethodCall call) async {
     if (call.method != 'link') return;
-    final code = ChallengeLink.parse(call.arguments as String? ?? '');
+    final read = ChallengeLink.read(call.arguments as String? ?? '');
     // A link that is not a challenge is dropped rather than surfaced:
     // the player tapped something, and being told it was the wrong
     // something helps nobody.
-    if (code != null && !_controller.isClosed) _controller.add(code);
+    if (read != null && !_controller.isClosed) _controller.add(read);
   }
 
   @override

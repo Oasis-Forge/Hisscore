@@ -1,4 +1,8 @@
 import 'challenge_code.dart';
+import 'rival_run.dart';
+
+/// A challenge and, when the link carried one, the run to race.
+typedef Challenge = ({ChallengeCode code, RivalRun? rival});
 
 /// Turns a [ChallengeCode] into something a friend can tap, and reads
 /// one back out of whatever arrives.
@@ -31,14 +35,36 @@ abstract final class ChallengeLink {
   /// page is a plain static file with nothing to route.
   static const webParam = 'k';
 
+  /// The sender's own run on that challenge, so the link is a race and
+  /// not just a board. Optional: a link without it is still a
+  /// challenge, and one whose run is too long to carry drops back to
+  /// being one.
+  static const rivalParam = 'r';
+
   /// The one that always opens the app.
-  static String app(ChallengeCode code) => '$scheme://$marker/${code.text}';
+  static String app(ChallengeCode code, {RivalRun? rival}) {
+    final run = _carryable(rival);
+    return '$scheme://$marker/${code.text}'
+        '${run == null ? '' : '?$rivalParam=${Uri.encodeQueryComponent(run)}'}';
+  }
 
   /// The one that is tappable everywhere.
-  static String web(ChallengeCode code) =>
-      'https://$webHost$webPath?$webParam=${code.text}';
+  static String web(ChallengeCode code, {RivalRun? rival}) {
+    final run = _carryable(rival);
+    return 'https://$webHost$webPath?$webParam=${code.text}'
+        '${run == null ? '' : '&$rivalParam=${Uri.encodeQueryComponent(run)}'}';
+  }
 
-  /// Reads a code out of a link, a bare code, or a message containing
+  /// A rival's run, encoded, unless it is too big to survive the trip —
+  /// see [RivalRun.maxEncodedLength].
+  static String? _carryable(RivalRun? rival) {
+    if (rival == null) return null;
+    final encoded = rival.encode();
+    return encoded.length > RivalRun.maxEncodedLength ? null : encoded;
+  }
+
+  /// Reads a challenge — and the sender's run on it, when the link
+  /// carries one — out of a link, a bare code, or a message containing
   /// either.
   ///
   /// Forgiving on purpose. This is fed by three different things that
@@ -47,16 +73,35 @@ abstract final class ChallengeLink {
   /// scheme on it), and whatever a player pasted into ENTER CODE —
   /// which is as likely to be a whole forwarded message as a code.
   /// Returns null when there is no valid code in it.
-  static ChallengeCode? parse(String input) {
-    for (final token in _candidates(input)) {
-      final code = ChallengeCode.parse(token);
-      if (code != null) return code;
+  ///
+  /// A damaged run is dropped and the challenge is kept: the board is
+  /// the part that has to be right, and a race is the part that can be
+  /// done without.
+  /// A race beats a bare code, wherever each sits in the text. The
+  /// shared message names the code in prose *before* it gives the link
+  /// — "HISCORE challenge C7K3-F9QX ... Beat it: <link>" — so taking
+  /// the first valid code would read the sentence and throw away the
+  /// run attached to the thing that was actually sent to be tapped.
+  static Challenge? read(String input) {
+    Challenge? plain;
+    for (final candidate in _candidates(input)) {
+      final code = ChallengeCode.parse(candidate.code);
+      if (code == null) continue;
+      final rival = RivalRun.decode(candidate.rival);
+      if (rival != null) return (code: code, rival: rival);
+      plain ??= (code: code, rival: null);
     }
-    return null;
+    return plain;
   }
 
-  /// Every substring worth trying as a code, best guess first.
-  static Iterable<String> _candidates(String input) sync* {
+  /// The challenge alone, for the callers that have no use for a rival.
+  static ChallengeCode? parse(String input) => read(input)?.code;
+
+  /// Every substring worth trying as a code, best guess first, each
+  /// with whatever run was attached to the same token.
+  static Iterable<({String code, String? rival})> _candidates(
+    String input,
+  ) sync* {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
 
@@ -73,7 +118,7 @@ abstract final class ChallengeLink {
 
     yield* _fromUri(trimmed);
     // A bare code, or anything else: let the code parser judge it.
-    yield trimmed;
+    yield (code: trimmed, rival: null);
   }
 
   /// Punctuation a link picks up from the sentence around it. A link is
@@ -87,23 +132,25 @@ abstract final class ChallengeLink {
     r']+$',
   );
 
-  /// The code-shaped parts of one token, if it looks like a link.
-  static Iterable<String> _fromUri(String token) sync* {
+  /// The code-shaped parts of one token, if it looks like a link, each
+  /// paired with the run attached to that same link.
+  static Iterable<({String code, String? rival})> _fromUri(String token) sync* {
     final uri = Uri.tryParse(token.replaceAll(_wrapping, ''));
     if (uri == null) return;
+    final rival = uri.queryParameters[rivalParam];
 
     // `?k=CODE`, whichever shape it came in.
     final param = uri.queryParameters[webParam];
-    if (param != null) yield param;
+    if (param != null) yield (code: param, rival: rival);
 
     // `hisscore://c/CODE`, `https://host/Hisscore/c/CODE`, and the
     // bare `/c/CODE` an engine route arrives as.
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    if (segments.isNotEmpty) yield segments.last;
+    if (segments.isNotEmpty) yield (code: segments.last, rival: rival);
 
     // `hisscore://CODE` has no path at all — the code is the authority.
     if (uri.host.isNotEmpty && uri.host != webHost && uri.host != marker) {
-      yield uri.host;
+      yield (code: uri.host, rival: rival);
     }
   }
 }
