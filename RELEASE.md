@@ -135,7 +135,38 @@ Check the signer before uploading; it must not say `CN=Android Debug`:
 apksigner verify --print-certs Hisscore/dist/hisscore-X.Y.Z.apk
 ```
 
-### 4. Screenshots
+### 4. Finish the App Link verification
+
+Challenge links ship (#51), but the https one is **not** a verified Android
+App Link, so tapping it opens the browser rather than the game. The page
+there shows the code and offers a `hisscore://` link, which does open the
+app — a working fallback, not the real thing.
+
+Two pieces are missing, and both need an account:
+
+- [ ] **`assetlinks.json` at the domain root.** It must be served from
+      `https://oasis-forge.github.io/.well-known/assetlinks.json`, which is
+      the *organisation* Pages site — a repo named `oasis-forge.github.io`,
+      not this one. Serving it under `/Hisscore/` does nothing; Android only
+      reads the root.
+- [ ] **The signing fingerprint that goes in it.** With Play App Signing the
+      one that matters is Google's, from Play Console → Setup → App signing,
+      not the local upload key. So this cannot be finished before the first
+      upload.
+
+Then add `android:autoVerify="true"` to the https intent-filter in
+`AndroidManifest.xml` (the filter is already there, with a comment saying
+this) and check it with:
+
+```bash
+adb shell pm verify-app-links --re-verify com.oasisforge.hisscore
+adb shell pm get-app-links com.oasisforge.hisscore
+```
+
+Until then, a player can get the same result by hand: Settings → Apps →
+Hisscore → Open by default → Open supported links.
+
+### 5. Screenshots
 
 Must come from a real device — Play down-ranks listings whose
 screenshots aren't real gameplay. Shot list and required sizes are in
@@ -150,7 +181,7 @@ screenshots aren't real gameplay. Shot list and required sizes are in
 - [ ] *(optional)* a FOG week, which is the most striking thing the game does
 - [ ] *(optional)* HOW tab with the pickup legend
 
-### 5. iOS has never been built
+### 6. iOS has never been built
 
 Not once, on any machine. The icons and launch screens were generated
 and the bundle ID is set (`com.oasisforge.hisscore`), but **nothing has

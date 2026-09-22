@@ -26,6 +26,39 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Challenge links: hisscore://c/XXXX-XXXX. Our own scheme,
+                 so it always opens the app with nothing to verify. Most
+                 chat apps will not make it tappable, which is what the
+                 https filter below is for. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="hisscore"/>
+            </intent-filter>
+            <!-- The same challenge as an https link, which everything
+                 linkifies.
+
+                 android:autoVerify is deliberately absent. Verifying an
+                 App Link needs /.well-known/assetlinks.json at the
+                 DOMAIN ROOT - oasis-forge.github.io, not the project
+                 page under /Hisscore/ - and the Play app-signing
+                 fingerprint, which does not exist until the app is on
+                 Play. Claiming autoVerify without those means Android
+                 fails the check and hands the link to the browser
+                 anyway. Until then the page at that address offers the
+                 hisscore:// link, and a player who turns on "Open
+                 supported links" for Hisscore gets the app directly.
+                 See RELEASE.md. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="oasis-forge.github.io"
+                    android:pathPrefix="/Hisscore/c"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

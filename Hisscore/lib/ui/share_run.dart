@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../game/challenge_code.dart';
+import '../game/challenge_link.dart';
 import '../game/daily_challenge.dart';
 import '../game/high_score_store.dart';
 import '../game/snake_engine.dart';
@@ -73,9 +74,13 @@ String _shareText({
     );
   }
   if (challenge != null) {
+    // The link, not just the code. A code has to be read, remembered
+    // and typed into a dialog the reader has to find first; a link is
+    // one tap. The code stays in the line above it for anyone whose
+    // messaging app strips links, or who is reading this aloud.
     return 'HISCORE challenge ${challenge.text} — ${engine.mode.label}'
         ' — Score ${engine.score} 🐍\n'
-        'Beat it: ENTER CODE ${challenge.text}';
+        'Beat it: ${ChallengeLink.web(challenge)}';
   }
   final level = engine.mode == GameMode.adventure
       ? ' (Level ${engine.level})'
