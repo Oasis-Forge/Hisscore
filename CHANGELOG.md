@@ -5,6 +5,18 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- Stars now ripen. One is worth 50 the moment it appears and 150 in the last
+  second before it goes, with its price written on it and a blink that gets
+  frantic near the end — so leaving it is worth points, and leaving it too long
+  is worth nothing.
+- A golden apple that runs away, in Adventure and Endless. It turns up every
+  dozen apples, pays a hundred points times your combo, and steps away from your
+  head every few ticks: you catch it by cutting it off, not by chasing it. It is
+  gone in eight seconds.
+- Hardcore now hides a poison apple among the real ones. The only tell is the
+  colour. Eating it costs three segments and your combo.
+- Adventure grows a pair of portals from level 7: go in one, come out of the
+  other still travelling the way you were.
 - Your daily streak now survives a day you miss. Every seven days in a row banks
   a streak freeze, up to two, and one is spent by itself the next time you play
   after a gap — the game tells you it did it rather than leaving you to wonder.

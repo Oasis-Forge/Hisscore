@@ -90,6 +90,23 @@ void main() {
       for (var i = 0; i < 6; i++) _Tone(i.isEven ? 600 : 800, 32, _Wave.square),
     ]),
   );
+  // The golden apple: the star's shape, run further up and held longer,
+  // because catching one is the best thing that happens in a run.
+  _write(
+    'golden',
+    _tones([
+      _Tone(1047, 40, _Wave.square),
+      _Tone(1319, 40, _Wave.square),
+      _Tone(1568, 40, _Wave.square),
+      _Tone(2093, 170, _Wave.square),
+    ]),
+  );
+  // Poison: shrink's fall, lower and rougher, ending somewhere the rest
+  // of the palette never goes.
+  _write(
+    'poison',
+    _tones([for (var i = 0; i < 7; i++) _Tone(420 - i * 45, 44, _Wave.square)]),
+  );
 
   stdout.writeln('Wrote assets/sfx/*.wav');
 

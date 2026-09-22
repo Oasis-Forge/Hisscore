@@ -232,6 +232,38 @@ class SnakeEngine {
   /// a turn arrives.
   bool get onTheBrink => graceHeld;
 
+  // ─── Risk and reward ──────────────────────────────
+
+  /// Where the fleeing golden apple turns up. Not Classic, which stays
+  /// the plain game, and not Hardcore, which has enough going on.
+  static const goldenModes = {GameMode.adventure, GameMode.endless};
+
+  /// One appears every this many apples, and is gone this long after.
+  static const int goldenEveryApples = 12;
+  static const int goldenLifetimeMs = 8000;
+
+  /// What it pays, before the combo it is multiplied by. High enough to
+  /// be worth chasing into somewhere the player would not otherwise go.
+  static const int goldenPoints = 100;
+
+  /// It steps away from the head every this many ticks — slower than
+  /// the snake, so it can be caught, but only by cutting it off.
+  static const int goldenFleeTicks = 3;
+
+  /// What a poison apple costs.
+  static const int poisonSegments = 3;
+
+  /// Set for the tick in which poison was eaten, so the screen can
+  /// shake for it.
+  bool atePoison = false;
+
+  /// Adventure grows portals from this level on.
+  static const int portalFromLevel = 7;
+
+  /// The two ends of the portal pair, when the level has one. Empty
+  /// otherwise, and never any length but 0 or 2.
+  List<GridPoint> portals = [];
+
   /// What a close call pays. Small on purpose: it is a thank-you for a
   /// save, not a reason to go hunting for walls.
   static const int closeCallPoints = 5;
@@ -362,6 +394,8 @@ class SnakeEngine {
     applesInLevel = 0;
     levelJustAdvanced = false;
     obstacles = _initialObstacles();
+    atePoison = false;
+    portals = portalsForLevel(level);
 
     // Food
     foods = [];
@@ -426,6 +460,7 @@ class SnakeEngine {
     lastEatenFood = null;
     levelJustAdvanced = false;
     justSurvivedCloseCall = false;
+    atePoison = false;
     // Whether the tick about to run is the one the snake was given to
     // save itself. Read before the flag is cleared for this tick.
     final wasHeld = graceHeld;
@@ -444,6 +479,11 @@ class SnakeEngine {
 
     // Calculate next head position.
     var next = head + direction.delta;
+
+    // ── Portals ──
+    // Before every check below, so that what the snake is judged on is
+    // where it actually ends up.
+    next = _throughPortal(next);
 
     // ── Wall handling ──
     if (next.x < 0 || next.y < 0 || next.x >= columns || next.y >= rows) {
@@ -494,6 +534,7 @@ class SnakeEngine {
       _ensurePrimaryApple();
 
       // Maybe spawn a bonus food.
+      _maybeSpawnGoldenApple();
       _maybeSpawnBonusFood();
     } else {
       snake.removeLast();
@@ -515,6 +556,9 @@ class SnakeEngine {
 
     // ── Magnet pull ──
     _applyMagnet();
+
+    // ── The golden apple runs ──
+    _applyFlight();
 
     // Ensure we always have at least one apple.
     _ensurePrimaryApple();
@@ -657,9 +701,27 @@ class SnakeEngine {
         _checkHardcoreObstacles();
 
       case FoodType.star:
-        final points = (50 * comboMultiplier * scoreMultiplier).round();
+        // Worth what it had ripened to, not what it was worth when it
+        // appeared.
+        final points =
+            (eaten.ripePoints(elapsedMs) * comboMultiplier * scoreMultiplier)
+                .round();
         score += points;
         _updateCombo();
+
+      case FoodType.golden:
+        score += (goldenPoints * comboMultiplier * scoreMultiplier).round();
+        _updateCombo();
+
+      case FoodType.poison:
+        atePoison = true;
+        for (var i = 0; i < poisonSegments && snake.length > 2; i++) {
+          snake.removeLast();
+        }
+        // The combo goes with the segments: the run does not simply
+        // carry on as though nothing had happened.
+        comboCount = 0;
+        lastEatMs = -comboWindowMs - 1;
 
       case FoodType.shield:
         hasShield = true;
@@ -765,6 +827,7 @@ class SnakeEngine {
         columns,
         rows,
       );
+      portals = portalsForLevel(level);
       _clearBuriedFood();
       _recalculateSpeed();
     }
@@ -845,6 +908,94 @@ class SnakeEngine {
     }
   }
 
+  /// A golden apple every [goldenEveryApples], in the two modes that
+  /// have room for one. Counted, not rolled for: a thing worth chasing
+  /// should be something the player can feel coming.
+  void _maybeSpawnGoldenApple() {
+    if (!goldenModes.contains(mode)) return;
+    if (totalApplesEaten == 0) return;
+    if (totalApplesEaten % goldenEveryApples != 0) return;
+    if (foods.any((f) => f.type.flees)) return;
+    final pos = _spawnFood();
+    if (pos == null) return;
+    foods.add(
+      FoodItem(
+        position: pos,
+        type: FoodType.golden,
+        spawnMs: elapsedMs,
+        lifetimeMs: goldenLifetimeMs,
+      ),
+    );
+  }
+
+  /// Everything that runs takes a step away from the head, every
+  /// [goldenFleeTicks] ticks.
+  void _applyFlight() {
+    if (totalTicks % goldenFleeTicks != 0) return;
+    if (!foods.any((f) => f.type.flees)) return;
+    foods = [for (final f in foods) f.type.flees ? _fleeStep(f) : f];
+  }
+
+  /// One step directly away from the head where it can, sideways where
+  /// it cannot, and nowhere at all when it is cornered — which is how
+  /// the thing is caught.
+  FoodItem _fleeStep(FoodItem item) {
+    final pos = item.position;
+    final dx = (pos.x - head.x).sign;
+    final dy = (pos.y - head.y).sign;
+    for (final next in [
+      GridPoint(pos.x + dx, pos.y + dy),
+      GridPoint(pos.x + dx, pos.y),
+      GridPoint(pos.x, pos.y + dy),
+    ]) {
+      if (next == pos) continue;
+      if (next.x < 0 || next.y < 0 || next.x >= columns || next.y >= rows) {
+        continue;
+      }
+      if (_isOccupied(next) || portals.contains(next)) continue;
+      return FoodItem(
+        position: next,
+        type: item.type,
+        spawnMs: item.spawnMs,
+        lifetimeMs: item.lifetimeMs,
+      );
+    }
+    return item;
+  }
+
+  /// A head stepping onto one end of a portal comes out of the other,
+  /// still travelling the way it was. The body follows on its own,
+  /// because a snake is only a list of where its head has been.
+  GridPoint _throughPortal(GridPoint next) {
+    if (portals.length != 2) return next;
+    if (next == portals.first) return portals.last;
+    if (next == portals.last) return portals.first;
+    return next;
+  }
+
+  /// The portal pair for a level, or nothing below [portalFromLevel].
+  ///
+  /// The two ends are put far apart and off the snake's opening lane,
+  /// so arriving through one is a change of scene rather than a step
+  /// sideways.
+  List<GridPoint> portalsForLevel(int level) {
+    if (mode != GameMode.adventure || level < portalFromLevel) return [];
+    final lane = rows ~/ 2;
+    final candidates = <GridPoint>[
+      GridPoint(1, 1),
+      GridPoint(columns - 2, rows - 2),
+      GridPoint(columns - 2, 1),
+      GridPoint(1, rows - 2),
+    ].where((p) => p.y != lane && !obstacles.contains(p)).toList();
+    if (candidates.length < 2) return [];
+    final first = candidates[level % candidates.length];
+    final second = candidates.firstWhere(
+      (p) => p != first && (p.x - first.x).abs() + (p.y - first.y).abs() > 4,
+      orElse: () => candidates.firstWhere((p) => p != first),
+    );
+    return [first, second];
+  }
+
   void _maybeSpawnBonusFood() {
     if (foods.length >= 3) return;
     final chance = mode == GameMode.adventure ? 0.25 + level * 0.02 : 0.18;
@@ -856,6 +1007,8 @@ class SnakeEngine {
       FoodType.speedBurst,
       FoodType.shrink,
       FoodType.magnet,
+      // Hardcore is the mode that can afford to be unfair about it.
+      if (mode == GameMode.hardcore) FoodType.poison,
     ];
     final type = types[random.nextInt(types.length)];
     final pos = _spawnFood();

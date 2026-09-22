@@ -229,6 +229,32 @@ class SnakeBoardPainter extends CustomPainter {
       }
     }
 
+    // ── Portals ──
+    for (final portal in engine.portals) {
+      final rect = _cell(portal, cellW, cellH).deflate(cellW * 0.12);
+      // Two rings, one breathing, so a portal reads as a way through
+      // rather than another thing to avoid.
+      for (final ring in [1.0, 0.62 + pulse * 0.2]) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: rect.center,
+            width: rect.width * ring,
+            height: rect.height * ring,
+          ),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6
+            ..color = RetroColors.zenBlue.withValues(alpha: 0.85),
+        );
+      }
+      canvas.drawOval(
+        rect,
+        Paint()
+          ..color = RetroColors.zenBlue.withValues(alpha: 0.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+    }
+
     // ── Snake glow pass ──
     final skin = SnakeSkin.current;
     // The glow swells with the combo, so a hot streak is visible in the
@@ -446,6 +472,41 @@ class SnakeBoardPainter extends CustomPainter {
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
         );
 
+      case FoodType.golden:
+        // An apple in gold, with a halo, so it reads as the same fruit
+        // and a much better one.
+        canvas.drawCircle(
+          center,
+          r * foodScale * 1.45,
+          Paint()
+            ..color = RetroColors.starGold.withValues(alpha: 0.22)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        );
+        canvas.drawCircle(
+          center,
+          r * foodScale,
+          Paint()..color = RetroColors.starGold,
+        );
+        canvas.drawCircle(
+          center.translate(0, -rect.height * 0.22),
+          r * 0.12,
+          Paint()..color = RetroColors.phosphorDim,
+        );
+
+      case FoodType.poison:
+        // Exactly the apple, in the wrong colour. That is the whole
+        // tell, and drawing it any other way would give the game away.
+        canvas.drawCircle(
+          center,
+          r * foodScale,
+          Paint()..color = RetroColors.poison,
+        );
+        canvas.drawCircle(
+          center.translate(0, -rect.height * 0.22),
+          r * 0.12,
+          Paint()..color = RetroColors.phosphorDim,
+        );
+
       case FoodType.shield:
         // Cyan diamond.
         final shieldPaint = Paint()..color = RetroColors.shieldCyan;
@@ -521,18 +582,44 @@ class SnakeBoardPainter extends CustomPainter {
         );
     }
 
-    // Timed food: blink when about to expire.
+    // Timed food: blink when about to expire, and faster the closer it
+    // gets — on a ripening star the hurry is the point.
     if (item.lifetimeMs != null) {
       final frac = item.lifeFraction(engine.elapsedMs);
-      if (frac < 0.3 && pulse > 0.5) {
-        // Flash overlay to signal imminent despawn.
-        canvas.drawCircle(
-          center,
-          r * 0.5,
-          Paint()..color = const Color(0x44FFFFFF),
-        );
+      if (frac < 0.3) {
+        final rate = item.type.ripens ? 2 + (1 - frac) * 8 : 1.0;
+        if ((pulse * rate) % 1.0 > 0.5) {
+          canvas.drawCircle(
+            center,
+            r * 0.5,
+            Paint()..color = const Color(0x44FFFFFF),
+          );
+        }
       }
     }
+
+    // What a ripening pickup is worth right now, written on it: the
+    // choice to wait is only a choice if the player can see the price
+    // of it.
+    if (item.type.ripens) {
+      _drawValue(canvas, center, r, item.ripePoints(engine.elapsedMs));
+    }
+  }
+
+  /// A small number under a pickup, in the pixel face the rest of the
+  /// game uses.
+  void _drawValue(Canvas canvas, Offset center, double r, int value) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: '$value',
+        style: RetroText.pixel(size: 6, color: RetroColors.starGold),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(center.dx - painter.width / 2, center.dy + r * 0.9),
+    );
   }
 
   void _drawStar(Canvas canvas, Offset center, double radius, Color color) {
