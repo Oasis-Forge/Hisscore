@@ -27,9 +27,16 @@ Keep output minimal — this burns real tokens:
 ## Product
 
 Hisscore is a single Flutter app (retro Snake) that lives in `Hisscore/`.
-There is no backend — everything is local: play, score, high scores,
-crash log, and the daily-challenge streak all live in `SharedPreferences`
-on-device.
+Almost everything is local — play, scores, stats, quests, XP, milestones,
+the crash log, the daily-challenge streak and the saved ghost run all
+live in `SharedPreferences` on-device.
+
+The one exception is the **global leaderboard**: Firebase anonymous auth
+plus Cloud Firestore. At the end of every run scoring above zero the app
+sends a display name, the score, a timestamp and an anonymous user id,
+with no prompt and no opt-out. Say so accurately in anything
+user-facing — the privacy policy and the store listing have both been
+wrong about this once already.
 
 ## Commands
 
@@ -102,24 +109,42 @@ Key engine details worth knowing before changing behavior:
   `bonusFoodLifetimeMs`) are fully testable with `tester.pump`.
 - **Input buffering**: `inputQueue` holds up to `maxQueuedTurns` (2)
   pending turns so a fast L-turn isn't lost to a single per-tick slot.
-- **`GameMode`** (`classic`/`adventure`/`endless`/`hardcore`/`zen`) gates
-  wrap-around (`wrapEnabled`), invulnerability (`zen`), score multiplier
-  (`hardcore` = 2x), and whether shields actually work (`shieldActive` is
-  false in hardcore). Obstacle layouts come from `lib/game/level.dart`
-  (`LevelData`) — adventure earns levels by apples eaten
-  (`_checkLevelAdvance`), hardcore escalates its own "pseudo-level" every
-  `hardcoreApplesPerStep` apples starting from `hardcoreStartLevel`
+- **`GameMode`** (`classic`/`adventure`/`endless`/`hardcore`/`zen`/
+  `timeAttack`) gates wrap-around (`wrapEnabled`), invulnerability
+  (`zen`), score multiplier (`hardcore` = 2x), whether shields actually
+  work (`shieldActive` is false in hardcore), and whether the run is
+  against a clock (`isTimed`). Obstacle layouts come from
+  `lib/game/level.dart` (`LevelData`) — adventure earns levels by apples
+  eaten (`_checkLevelAdvance`), hardcore escalates its own "pseudo-level"
+  every `hardcoreApplesPerStep` apples starting from `hardcoreStartLevel`
   (chosen to keep the snake's starting lane clear).
+- **Fairness**: `graceTicks` holds a doomed snake on the brink for one
+  tick with an empty input queue, so a turn that landed a frame late
+  still counts. Hardcore gets none. A scrape steered out of is a close
+  call, worth `closeCallPoints`. `revive()` brings a run back once in
+  Adventure and Endless, halved and with the obstacles near the head
+  swept.
 - **Food** (`lib/game/food_types.dart`, `FoodItem`/`FoodType`) is a list,
   not a single apple: there's always a primary apple
-  (`_ensurePrimaryApple`) plus occasional timed bonus pickups (star,
-  shield, speed, shrink, magnet) that despawn after
-  `bonusFoodLifetimeMs`. `food` (singular) is a backward-compat getter
-  for the primary apple's position.
+  (`_ensurePrimaryApple`) plus occasional timed bonus pickups that
+  despawn after `bonusFoodLifetimeMs`. A star *ripens* (`ripePoints`), a
+  golden apple *flees* (`_fleeStep`, Adventure and Endless), and poison
+  looks exactly like an apple in the wrong colour (Hardcore only). `food`
+  (singular) is a backward-compat getter for the primary apple's
+  position. **Beware in tests**: the engine puts a primary apple back the
+  moment it notices there is none, so `foods.first` may not be what you
+  put there — select by type.
 - **Daily challenge** (`lib/game/daily_challenge.dart`) seeds the
-  `Random` from the date so the board is reproducible per-day, but the
-  grid is sized to the screen, so boards aren't comparable across
-  differently-sized devices.
+  `Random` from the day number so the board is reproducible per-day, and
+  plays on a fixed grid (`SnakeEngine.fixedGrid`, letterboxed by the
+  page) so it is the same board everywhere. Challenge codes and Time
+  Attack do the same; normal runs are still shaped to the screen, so
+  their all-time boards compare different-sized boards.
+- **Weekly rules** (`lib/game/weekly_modifier.dart`) bend the daily for a
+  whole ISO week: double speed, no walls, mirrored steering, fog, a tiny
+  board, magnet madness. Picked from the *day number* so the rule named
+  on the card and the rule played cannot drift apart. The engine owns the
+  ones that are rules; the board only draws the fog.
 - **`AutoPlayer`** (`lib/game/auto_player.dart`) drives the engine
   autonomously — used for the attract-mode demo on the menu (see
   `game_page.dart`), not just tests.
@@ -129,10 +154,32 @@ Key engine details worth knowing before changing behavior:
 `lib/game/high_score_store.dart` defines `HighScoreStore` as an abstract
 interface with two implementations: `SharedPreferencesHighScoreStore`
 (production, requires `await init()` before use — see `main.dart`) and
-`InMemoryHighScoreStore` (tests / previews). It holds four independent
+`InMemoryHighScoreStore` (tests / previews). It holds several independent
 concerns in one store: legacy single high score, top-5 leaderboard
-(`ScoreEntry`), cumulative `GameStats`, and `DailyState` (streaks). Both
-implementations must be kept in sync when adding a new persisted field.
+(`ScoreEntry`), cumulative `GameStats`, `DailyState` (streaks and banked
+freezes), `PlayerProgress` (XP, quests, milestones) and the saved daily
+ghost (`RunLog`). **Both implementations must be kept in sync when adding
+a persisted field**, plus a test — they had already started to differ over
+what a finished run counts for, which is why both now call
+`GameStats.record` rather than each doing the arithmetic.
+
+### Session layer
+
+`lib/game/game_session.dart` (`GameSession`) is a `ChangeNotifier` that
+runs a game: the engine's lifecycle, the ticker, persistence, quests and
+milestones, the daily and its weekly rule, the online submit, the second
+chance and the ghost. It is the seam that makes all of that testable
+without pumping a widget. Rules go in the engine; consequences of a
+finished run go here; drawing goes in the page.
+
+### Determinism and the run log
+
+`lib/game/run_log.dart` records a run as a seed plus the turns that were
+*applied* (a refused reversal is not one, and under a mirrored week the
+recorded turn is what the snake actually did). `RunLog.replay()` rebuilds
+it exactly. This is what the daily ghost race is built on and what
+server-side score verification would need, so **never add unseeded
+randomness to the engine and never read the wall clock in it**.
 
 ### Crash reporting
 
@@ -150,14 +197,23 @@ is called first, before `runApp`, wiring both `FlutterError.onError` and
 
 ### UI layer
 
-`lib/ui/game_page.dart` is the large top-level stateful widget
-orchestrating game phases, mode/tab selection, sound, notifications, and
-review prompts; it wires together `board.dart` (grid rendering),
-`controls.dart` (swipe/keyboard input), `game_overlay.dart` (pause/game
-over UI), `ready_tabs.dart` (mode picker), `hud_widgets.dart`,
-`particles.dart`, `screen_shake.dart`, and `floating_label.dart` (score
-popups). `lib/ui/theme.dart` holds the phosphor-green CRT retro palette
-(`RetroColors`) shared across all UI. On the menu, the board underneath
+`lib/ui/game_page.dart` measures the screen, routes input and decides
+which of the two screens is showing; the running of the game itself lives
+in `GameSession`. It wires together `board.dart` (grid rendering),
+`controls.dart` (swipe/keyboard input), `game_board_view.dart`,
+`game_hud.dart`, `game_overlay.dart` and `end_of_run.dart` (pause and
+game-over UI), `second_chance.dart`, `ready_tabs.dart` / `intro_panel.dart`
+(the menu) and `run_effects.dart`.
+
+`lib/ui/run_effects.dart` owns everything a run throws on screen —
+particles, floating labels, screen shake, the level flash, the death
+slow-motion. **None of it is game state**: the run plays out identically
+with all of it switched off, which is why it is kept out of both the
+engine and the session.
+
+`lib/ui/theme.dart` holds the phosphor-green CRT retro palette
+(`RetroColors`) shared across all UI; the colours are *getters*, so they
+cannot be used in `const` widgets. On the menu, the board underneath
 plays itself via `AutoPlayer` until PLAY is pressed.
 
 Other one-shot services: `lib/game/notification_service.dart` (local

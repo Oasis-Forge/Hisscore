@@ -1,8 +1,8 @@
 # HISCORE
 
-Retro Snake in Flutter — phosphor-green CRT, five modes, and a daily
-challenge. The menu shows the game playing itself; pressing PLAY hands
-the whole screen over to the board.
+Retro Snake in Flutter — phosphor-green CRT, six modes, and a daily
+challenge that bends one rule a week. The menu shows the game playing
+itself; pressing PLAY hands the whole screen over to the board.
 
 ## Run it
 

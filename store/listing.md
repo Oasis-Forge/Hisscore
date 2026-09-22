@@ -22,13 +22,13 @@ Hisscore: Retro Snake
 **Play — short description (80 chars max):**
 
 ```
-Swipe to steer a neon snake. Five modes, daily challenge, no ads, no accounts.
+Swipe to steer a neon snake. Six modes, a new daily board, and no ads.
 ```
 
 **App Store — subtitle (30 chars max):**
 
 ```
-Neon snake, five ways
+Neon snake, six ways
 ```
 
 ## Full description
@@ -40,26 +40,47 @@ a phone you steer with your thumb.
 Swipe anywhere to turn. No buttons crowding the board, no menus in the
 way — the whole screen is the game.
 
-FIVE WAYS TO PLAY
-• Classic — walls kill. The original.
-• Adventure — clear apples to climb levels, each with its own obstacles.
+SIX WAYS TO PLAY
+• Classic — walls kill. The original, and it stays the original.
+• Adventure — clear apples to climb levels, each with its own obstacles,
+  and portals from level seven.
 • Endless — walls wrap, so the only thing that can stop you is you.
-• Hardcore — obstacles from the start, faster, double points, and
-  shields won't save you.
+• Hardcore — obstacles from the start, faster, double points, shields
+  won't save you, and one apple in the bunch is poison.
 • Zen — nothing kills you. Just the snake, the board, and no pressure.
+• Time Attack — sixty seconds on the same board as everybody else. Eat
+  fast and apples are worth double.
 
-A NEW BOARD EVERY DAY
-The daily challenge gives you one seeded board per day and tracks your
-streak. Miss a day and the streak resets.
+A NEW BOARD EVERY DAY, AND A NEW RULE EVERY WEEK
+The daily challenge gives everyone the same seeded board and tracks your
+streak. Every week it bends one rule for all of us: everything twice as
+fast, no walls, mirrored steering, fog that lights only the ground near
+your head, a smaller board, or food that comes to you.
+
+Miss a day and you don't lose the streak straight away — seven days in a
+row banks a freeze, and it's spent for you the next time you play.
+
+RACE YOURSELF
+Your best run of the day comes back as a ghost snake running the board
+alongside you. Beat it.
 
 PICKUPS WORTH CHASING
-Apples grow you and score. Stars pay big. Shields survive one crash.
+Apples grow you and score. Stars ripen — worth 50 the moment they appear
+and 150 in the last second before they go. Shields survive one crash.
 Speed bursts, shrink potions and magnets change the run while they last.
+And in Adventure and Endless, a golden apple that runs away from you.
 String apples together quickly and the combo multiplier climbs.
 
-NO NONSENSE
-No ads. No accounts. No tracking. Nothing leaves your device — scores
-and stats are stored on your phone and nowhere else. Plays offline.
+A REASON TO COME BACK
+Three quests a day, XP and levels that unlock four looks and four snake
+skins, and twenty-one one-off milestones — some of which give you a title
+to wear on the menu.
+
+LEADERBOARDS, IF YOU WANT THEM
+A board for each mode and one for each day's challenge. Pick a name; no
+account, no sign-up, no email.
+
+NO ADS. NO ACCOUNTS. Plays offline.
 ```
 
 ## Keywords (App Store, 100 chars max, comma separated)
@@ -73,21 +94,51 @@ snake,retro,arcade,classic,neon,offline,casual,highscore,daily,crt,pixel,80s,no 
 - **Play category:** Games → Arcade
 - **App Store category:** Games → Arcade (secondary: Casual)
 - **Content rating:** suitable for all ages. No violence, no purchases,
-  no user content, no ads, no data collection.
+  no ads. **There is user-generated content in one narrow sense** — the
+  display name a player types appears on a public leaderboard. Answer the
+  questionnaire accordingly rather than claiming none.
 
 ## Play Data safety answers
 
-The app collects and transmits nothing, which makes this section short:
+> **This section was wrong and had to be rewritten (2026-09-22).** It
+> previously said the app "collects and transmits nothing", which stopped
+> being true the day the Firebase leaderboard shipped. Submitting that
+> would have been a false declaration. Match this to
+> [`docs/index.html`](../docs/index.html), which was corrected on
+> 2026-09-20 and is the published policy.
 
-- Does your app collect or share any user data? **No**
-- Is all user data encrypted in transit? *N/A — no data leaves the device*
-- Do you provide a way for users to request deletion? *N/A — clearing
-  app storage or uninstalling removes everything*
+**What actually leaves the device.** At the end of every run scoring
+above zero, the app writes to Cloud Firestore: the display name the
+player chose, the score, a server timestamp, and an anonymous Firebase
+Auth user id. There is no prompt and no in-app opt-out. Nothing else is
+sent — no analytics, no ads SDK, no crash reports (crash traces stay
+on-device unless a build supplies a `SENTRY_DSN`, and no shipped build
+does).
 
-Scores, stats and the daily streak are stored locally via the platform's
-standard app storage. The release build requests no runtime permissions
-other than `POST_NOTIFICATIONS`, used solely for the local daily-streak
-reminder scheduled on-device.
+- Does your app collect or share any user data? **Yes**
+- **Personal info → Name.** Collected and transmitted. Purpose: app
+  functionality. **Shared publicly** — it is shown on a leaderboard.
+  Not optional.
+- **App activity → In-app score.** Collected and transmitted. Purpose:
+  app functionality. Shown publicly alongside the name. Not optional.
+- **Device or other IDs.** A pseudonymous Firebase Auth id, collected and
+  transmitted, used to keep one row per player. Not optional.
+- Is all user data encrypted in transit? **Yes** — Firestore is HTTPS.
+  At rest it has Google's defaults and nothing of ours on top.
+- Do you provide a way for users to request deletion? **Yes, by email**
+  (`oasisforge.support@gmail.com`). There is no in-app deletion flow.
+  Clearing app storage removes the local copy but not the board row.
+
+Everything else — stats, quests, XP, milestones, the daily streak and the
+saved ghost run — is stored locally via the platform's standard app
+storage and never leaves the phone. The release build requests no runtime
+permissions other than `POST_NOTIFICATIONS`, used solely for the local
+daily-streak reminder scheduled on-device.
+
+**Before wider release:** an in-app opt-out for score submission.
+Silently sending a pseudonymous id plus a display name is personal data
+under GDPR, and the policy currently tells players to go offline to avoid
+it, which is a workaround rather than a control. Tracked in RELEASE.md.
 
 ## Screenshots — still to capture
 
@@ -108,10 +159,15 @@ Shot list, in the order they should appear:
    full-bleed board and HUD. This is the one that sells it.
 2. **The intro screen** — cabinet, title, mode chips.
 3. **Hardcore with obstacles on the board** — shows it isn't just one mode.
-4. **Game over with a high score and the score breakdown.**
-5. **The daily challenge card showing a streak** — shows the reason to
-   come back.
-6. *(optional)* The HOW tab, showing the pickup legend.
+4. **Game over with a high score, the score breakdown, the XP bar and a
+   milestone line** — shows there is progression behind the run.
+5. **The daily challenge card showing a streak and the week's rule** —
+   shows the reason to come back.
+6. **Time Attack mid-run with the timer ring red** — the newest mode, and
+   the clearest "one more go".
+7. *(optional)* A FOG week mid-run. It is the most striking thing the
+   game does and looks like nothing else on the store page.
+8. *(optional)* The HOW tab, showing the pickup legend.
 
 Play down-ranks listings whose screenshots are just the app icon or
 marketing text, so keep these as actual gameplay.
