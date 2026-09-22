@@ -97,6 +97,7 @@ class ReadyModesTab extends StatelessWidget {
     required this.onEnterCode,
     required this.questSummary,
     required this.onOpenQuests,
+    this.rank,
   });
 
   final GameMode selectedMode;
@@ -118,11 +119,27 @@ class ReadyModesTab extends StatelessWidget {
   /// Jump to the quests page.
   final VoidCallback onOpenQuests;
 
+  /// The label the player has earned, if any. Local to the device —
+  /// what they are called on a board is a different thing, decided by
+  /// the Firestore rules.
+  final String? rank;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (rank != null) ...[
+          Text(
+            rank!,
+            style: RetroText.pixel(
+              size: 9,
+              color: RetroColors.amber,
+              letterSpacing: 3,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         ModeSelector(selected: selectedMode, onChanged: onModeChanged),
         const SizedBox(height: 18),
         DailyChallengeCard(
@@ -408,6 +425,15 @@ class DailyChallengeCard extends StatelessWidget {
               '${dailyState.currentStreak == 1 ? '' : 'S'}'
               '${dailyState.bestStreak > dailyState.currentStreak ? '  ·  BEST ${dailyState.bestStreak}' : ''}',
               style: RetroText.pixel(size: 7, color: RetroColors.metal),
+            ),
+          ],
+          if (dailyState.freezes > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              dailyState.freezes == 1
+                  ? '1 STREAK FREEZE BANKED'
+                  : '${dailyState.freezes} STREAK FREEZES BANKED',
+              style: RetroText.pixel(size: 6, color: RetroColors.shieldCyan),
             ),
           ],
           if (playedToday) ...[

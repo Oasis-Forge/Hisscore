@@ -5,6 +5,14 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- Your daily streak now survives a day you miss. Every seven days in a row banks
+  a streak freeze, up to two, and one is spent by itself the next time you play
+  after a gap — the game tells you it did it rather than leaving you to wonder.
+  The daily card says how many you have in hand.
+- Twenty-one local firsts, each paying XP the once: your first pickup, a ten-apple
+  combo, a thousand apples, level 25, a thirty-day streak, five close calls in
+  one run, a run in every mode, finishing a friend's challenge. Some carry a
+  label you wear on the menu afterwards. They stay on your device.
 - The daily challenge now plays by a different rule every week, the same one
   for everybody: everything twice as fast, no walls, mirrored steering, fog
   that lights only the ground near your head, a smaller board, or food that

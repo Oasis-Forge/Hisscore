@@ -34,22 +34,70 @@ class ScoreEntry {
 // ─── Cumulative stats ───────────────────────────────
 
 class GameStats {
-  GameStats({this.gamesPlayed = 0, this.totalApples = 0, this.bestCombo = 0});
+  GameStats({
+    this.gamesPlayed = 0,
+    this.totalApples = 0,
+    this.bestCombo = 0,
+    this.powerUps = 0,
+    this.bestCloseCalls = 0,
+    this.challengesPlayed = 0,
+    Set<String>? modesPlayed,
+  }) : modesPlayed = modesPlayed ?? {};
 
   int gamesPlayed;
   int totalApples;
   int bestCombo;
 
+  /// Lifetime pickups taken, and the most close calls steered out of in
+  /// any one run. Both exist for the milestones; nothing else reads
+  /// them yet.
+  int powerUps;
+  int bestCloseCalls;
+
+  /// Friends' challenge codes played to the end.
+  int challengesPlayed;
+
+  /// [GameMode.name]s this player has finished a run in.
+  Set<String> modesPlayed;
+
+  /// Folds a finished run in.
+  ///
+  /// Both stores call this rather than each doing the arithmetic, so
+  /// the in-memory one and the real one cannot drift over what a run
+  /// counts for — which they had already started to, before there was
+  /// anything here to drift about.
+  void record(SnakeEngine engine, {bool challenge = false}) {
+    gamesPlayed++;
+    totalApples += engine.totalApplesEaten;
+    if (engine.bestCombo > bestCombo) bestCombo = engine.bestCombo;
+    powerUps += engine.powerUpsCollected;
+    if (engine.closeCalls > bestCloseCalls) {
+      bestCloseCalls = engine.closeCalls;
+    }
+    if (challenge) challengesPlayed++;
+    modesPlayed = {...modesPlayed, engine.mode.name};
+  }
+
   Map<String, dynamic> toJson() => {
     'gamesPlayed': gamesPlayed,
     'totalApples': totalApples,
     'bestCombo': bestCombo,
+    'powerUps': powerUps,
+    'bestCloseCalls': bestCloseCalls,
+    'challengesPlayed': challengesPlayed,
+    'modesPlayed': modesPlayed.toList(),
   };
 
   factory GameStats.fromJson(Map<String, dynamic> json) => GameStats(
     gamesPlayed: json['gamesPlayed'] as int? ?? 0,
     totalApples: json['totalApples'] as int? ?? 0,
     bestCombo: json['bestCombo'] as int? ?? 0,
+    powerUps: json['powerUps'] as int? ?? 0,
+    bestCloseCalls: json['bestCloseCalls'] as int? ?? 0,
+    challengesPlayed: json['challengesPlayed'] as int? ?? 0,
+    modesPlayed: {
+      for (final m in (json['modesPlayed'] as List? ?? [])) m as String,
+    },
   );
 }
 
@@ -61,6 +109,7 @@ class DailyState {
     this.lastScore = 0,
     this.currentStreak = 0,
     this.bestStreak = 0,
+    this.freezes = 0,
   });
 
   /// dateKey (e.g. "2026-03-14") of the last completed daily run.
@@ -69,11 +118,16 @@ class DailyState {
   final int currentStreak;
   final int bestStreak;
 
+  /// Days banked against a missed daily: earned one per seven days of
+  /// streak, spent without being asked.
+  final int freezes;
+
   Map<String, dynamic> toJson() => {
     'lastPlayedKey': lastPlayedKey,
     'lastScore': lastScore,
     'currentStreak': currentStreak,
     'bestStreak': bestStreak,
+    'freezes': freezes,
   };
 
   factory DailyState.fromJson(Map<String, dynamic> json) => DailyState(
@@ -81,6 +135,7 @@ class DailyState {
     lastScore: json['lastScore'] as int? ?? 0,
     currentStreak: json['currentStreak'] as int? ?? 0,
     bestStreak: json['bestStreak'] as int? ?? 0,
+    freezes: json['freezes'] as int? ?? 0,
   );
 }
 
@@ -92,7 +147,7 @@ abstract class HighScoreStore {
   Future<List<ScoreEntry>> loadTopScores();
   Future<void> saveScoreEntry(ScoreEntry entry);
   Future<GameStats> loadStats();
-  Future<void> updateStats(SnakeEngine engine);
+  Future<void> updateStats(SnakeEngine engine, {bool challenge = false});
   Future<DailyState> loadDailyState();
   Future<void> saveDailyState(DailyState state);
 
@@ -160,12 +215,8 @@ class InMemoryHighScoreStore implements HighScoreStore {
   Future<GameStats> loadStats() async => _stats;
 
   @override
-  Future<void> updateStats(SnakeEngine engine) async {
-    _stats.gamesPlayed++;
-    _stats.totalApples += engine.totalApplesEaten;
-    if (engine.bestCombo > _stats.bestCombo) {
-      _stats.bestCombo = engine.bestCombo;
-    }
+  Future<void> updateStats(SnakeEngine engine, {bool challenge = false}) async {
+    _stats.record(engine, challenge: challenge);
   }
 
   @override
@@ -280,14 +331,10 @@ class SharedPreferencesHighScoreStore implements HighScoreStore {
   }
 
   @override
-  Future<void> updateStats(SnakeEngine engine) async {
+  Future<void> updateStats(SnakeEngine engine, {bool challenge = false}) async {
     await init();
     final stats = await loadStats();
-    stats.gamesPlayed++;
-    stats.totalApples += engine.totalApplesEaten;
-    if (engine.bestCombo > stats.bestCombo) {
-      stats.bestCombo = engine.bestCombo;
-    }
+    stats.record(engine, challenge: challenge);
     await _prefs!.setString(_statsKey, jsonEncode(stats.toJson()));
   }
 

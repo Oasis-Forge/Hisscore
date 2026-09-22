@@ -1,5 +1,21 @@
 import 'weekly_modifier.dart';
 
+/// What finishing today's daily did to the streak and the freeze bank.
+typedef StreakOutcome = ({
+  int streak,
+
+  /// Freezes left in the bank afterwards.
+  int freezes,
+
+  /// How many banked days this run had to spend to keep the streak
+  /// alive. Zero on an unbroken run.
+  int freezesSpent,
+
+  /// Whether the streak just passed another seven days and paid for a
+  /// freeze.
+  bool freezeEarned,
+});
+
 /// Pure logic for the daily challenge: everyone who plays on the same
 /// calendar day gets the same food/obstacle layout (via a shared RNG
 /// seed), and playing on consecutive days builds a streak.
@@ -80,8 +96,19 @@ abstract final class DailyChallenge {
   static int rowsFor(WeeklyModifier? modifier) =>
       modifier == WeeklyModifier.tinyBoard ? WeeklyModifier.tinyRows : gridRows;
 
+  /// A streak survives this many days of not playing, per banked
+  /// freeze. One freeze covers one missed day.
+  static const int freezePerStreak = 7;
+
+  /// How many freezes can be sitting in the bank at once. Low enough
+  /// that a streak still has to be kept rather than bought: two weeks
+  /// of playing buys two days of not.
+  static const int maxFreezes = 2;
+
   /// Computes the new streak count given the last day the challenge was
-  /// completed and today's date.
+  /// completed and today's date. The no-freeze reading of
+  /// [nextStreakState], kept because most of the question is this
+  /// simple.
   ///
   /// - Same day as last played: streak is unchanged (already counted).
   /// - Exactly one day after last played: streak continues (+1).
@@ -90,12 +117,81 @@ abstract final class DailyChallenge {
     required String? lastPlayedKey,
     required int previousStreak,
     required DateTime today,
+  }) => nextStreakState(
+    lastPlayedKey: lastPlayedKey,
+    previousStreak: previousStreak,
+    freezes: 0,
+    today: today,
+  ).streak;
+
+  /// The streak and the freeze bank after finishing today's daily.
+  ///
+  /// A missed day is only ever noticed the next time somebody plays, so
+  /// this is where a freeze is spent: the gap is counted, and if the
+  /// bank covers it the streak carries on as though the days had been
+  /// played. Spending is automatic — a player who has to remember to
+  /// use the thing that saves them has not been saved.
+  static StreakOutcome nextStreakState({
+    required String? lastPlayedKey,
+    required int previousStreak,
+    required int freezes,
+    required DateTime today,
   }) {
-    final todayKey = dateKey(today);
-    if (lastPlayedKey == todayKey) return previousStreak;
-    final yesterday = today.toUtc().subtract(const Duration(days: 1));
-    if (lastPlayedKey == dateKey(yesterday)) return previousStreak + 1;
-    return 1;
+    if (lastPlayedKey == dateKey(today)) {
+      // Already counted today. A second run changes the score, not the
+      // streak, and must not pay out a second freeze.
+      return (
+        streak: previousStreak,
+        freezes: freezes,
+        freezesSpent: 0,
+        freezeEarned: false,
+      );
+    }
+
+    final missed = missedDays(lastPlayedKey: lastPlayedKey, today: today);
+    final covered = missed >= 0 && missed <= freezes;
+    final spent = covered ? missed : 0;
+    final streak = covered ? previousStreak + 1 : 1;
+
+    var left = freezes - spent;
+    // One per seven days kept, and only while there is room for it —
+    // so the line on the card is never a lie about a freeze that was
+    // quietly dropped.
+    final earned = streak % freezePerStreak == 0 && left < maxFreezes;
+    if (earned) left++;
+
+    return (
+      streak: streak,
+      freezes: left,
+      freezesSpent: spent,
+      freezeEarned: earned,
+    );
+  }
+
+  /// Days between the last completed daily and today that went
+  /// unplayed: 0 for "played yesterday", 1 for one day skipped. -1
+  /// when there is no streak to keep, or when the clock has gone
+  /// backwards and the answer is not meaningful.
+  static int missedDays({
+    required String? lastPlayedKey,
+    required DateTime today,
+  }) {
+    final last = _parseKey(lastPlayedKey);
+    if (last == null) return -1;
+    final d = today.toUtc();
+    final gap = DateTime.utc(d.year, d.month, d.day).difference(last).inDays;
+    return gap < 1 ? -1 : gap - 1;
+  }
+
+  static DateTime? _parseKey(String? key) {
+    if (key == null) return null;
+    final parts = key.split('-');
+    if (parts.length != 3) return null;
+    final y = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final d = int.tryParse(parts[2]);
+    if (y == null || m == null || d == null) return null;
+    return DateTime.utc(y, m, d);
   }
 
   /// Whether the daily challenge has already been completed today.

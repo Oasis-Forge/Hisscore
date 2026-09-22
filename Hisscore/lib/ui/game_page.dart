@@ -579,6 +579,8 @@ class _GamePageState extends State<GamePage>
                   ? _takeSecondChance
                   : null,
               onSecondChanceExpired: session.refuseSecondChance,
+              streakFreezesSpent: session.streakOutcome?.freezesSpent ?? 0,
+              streakFreezeEarned: session.streakOutcome?.freezeEarned ?? false,
             )
           : null,
       countdown: session.resumeCountdown,
