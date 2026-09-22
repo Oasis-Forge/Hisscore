@@ -39,6 +39,13 @@ class GameHud extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ScoreReadout(label: 'SCORE', value: engine.score),
+          if (engine.mode.isTimed) ...[
+            const SizedBox(width: 10),
+            TimerRing(
+              fraction: engine.timeFraction,
+              seconds: (engine.timeLeftMs! / 1000).ceil(),
+            ),
+          ],
           const SizedBox(width: 14),
           Expanded(child: _buildStatusChips()),
           const SizedBox(width: 14),

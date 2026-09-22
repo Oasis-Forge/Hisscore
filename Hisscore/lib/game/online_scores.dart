@@ -11,7 +11,12 @@ class BoardId {
   factory BoardId.daily(int dayNumber) => BoardId._('daily-$dayNumber');
 
   /// Best-ever scores in [mode].
-  factory BoardId.allTime(GameMode mode) => BoardId._('alltime-${mode.name}');
+  ///
+  /// Lower-cased because a board id is a document key that outlives the
+  /// enum spelling: `timeAttack` in Dart must not become a different
+  /// board from the `timeattack` anybody would write by hand.
+  factory BoardId.allTime(GameMode mode) =>
+      BoardId._('alltime-${mode.name.toLowerCase()}');
 
   /// The stable id used as the document / collection key.
   final String value;

@@ -5,6 +5,10 @@ Notable changes per release, written for users. Versions follow [Semantic Versio
 ## [Unreleased]
 
 ### Added
+- A sixth mode: TIME ATTACK. Sixty seconds on the same board on every phone,
+  with a timer ring in the corner that turns red for the last ten seconds, and
+  apples worth double when you take one within two seconds of the last. It has
+  its own all-time leaderboard.
 - Stars now ripen. One is worth 50 the moment it appears and 150 in the last
   second before it goes, with its price written on it and a blink that gets
   frantic near the end — so leaving it is worth points, and leaving it too long

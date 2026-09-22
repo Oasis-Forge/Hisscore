@@ -62,6 +62,7 @@ extension GameModeUi on GameMode {
     GameMode.endless => RetroColors.shieldCyan,
     GameMode.hardcore => RetroColors.cherry,
     GameMode.zen => RetroColors.zenBlue,
+    GameMode.timeAttack => RetroColors.speedYellow,
   };
 }
 

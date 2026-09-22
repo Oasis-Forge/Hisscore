@@ -340,8 +340,10 @@ class GameSession extends ChangeNotifier {
     streakOutcome = null;
     standing = null;
     if (engine.phase == GamePhase.gameOver || engine.phase == GamePhase.ready) {
-      // A fresh run always gets an engine sized to this screen.
-      engine = newEngine();
+      // A fresh run gets an engine sized to this screen — except Time
+      // Attack, whose whole claim is that sixty seconds on one board
+      // means the same thing on every phone.
+      engine = newEngine(fixedGrid: selectedMode.isTimed);
       engine.mode = selectedMode;
       isDailyRun = false;
       challenge = null;

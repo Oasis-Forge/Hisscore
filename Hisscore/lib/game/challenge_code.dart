@@ -31,6 +31,7 @@ class ChallengeCode {
     GameMode.endless: 'E',
     GameMode.hardcore: 'H',
     GameMode.zen: 'Z',
+    GameMode.timeAttack: 'T',
   };
 
   /// A fresh code for a new game in [mode].

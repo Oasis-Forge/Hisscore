@@ -42,7 +42,11 @@ enum GameMode {
   adventure,
   endless,
   hardcore,
-  zen;
+  zen,
+
+  /// Sixty seconds on the same board for everyone, so the scores mean
+  /// something next to each other.
+  timeAttack;
 
   String get label => switch (this) {
     GameMode.classic => 'CLASSIC',
@@ -50,6 +54,7 @@ enum GameMode {
     GameMode.endless => 'ENDLESS',
     GameMode.hardcore => 'HARDCORE',
     GameMode.zen => 'ZEN',
+    GameMode.timeAttack => 'TIME ATTACK',
   };
 
   String get description => switch (this) {
@@ -58,7 +63,12 @@ enum GameMode {
     GameMode.endless => 'Wrap walls, survive!',
     GameMode.hardcore => 'No shields. 2x points. Deadly.',
     GameMode.zen => 'No game over. Just vibes.',
+    GameMode.timeAttack => '60 seconds. Eat fast, score double.',
   };
+
+  /// Whether the run is played against a clock rather than until it
+  /// ends.
+  bool get isTimed => this == GameMode.timeAttack;
 }
 
 // ─── GridPoint ──────────────────────────────────────────
@@ -257,6 +267,33 @@ class SnakeEngine {
   /// shake for it.
   bool atePoison = false;
 
+  // ─── Time Attack ──────────────────────────────────
+
+  /// How long a timed run lasts.
+  static const int timeAttackMs = 60000;
+
+  /// Eating again this soon after the last apple is worth double.
+  ///
+  /// Slightly wider than [comboWindowMs] on purpose: the combo is about
+  /// a streak, and this is about hurrying, which is a shade easier to
+  /// keep up.
+  static const int quickEatMs = 2000;
+
+  /// Milliseconds left on the clock, or null when the run is not timed.
+  int? get timeLeftMs {
+    if (!mode.isTimed) return null;
+    final left = timeAttackMs - elapsedMs;
+    return left < 0 ? 0 : left;
+  }
+
+  /// How much of the clock is left, 0 to 1, for the ring in the HUD.
+  double get timeFraction =>
+      mode.isTimed ? (timeLeftMs! / timeAttackMs).clamp(0.0, 1.0) : 1.0;
+
+  /// Whether the apple just taken was taken in a hurry. Lives for one
+  /// tick, like [justAte].
+  bool ateQuickly = false;
+
   /// Adventure grows portals from this level on.
   static const int portalFromLevel = 7;
 
@@ -395,6 +432,7 @@ class SnakeEngine {
     levelJustAdvanced = false;
     obstacles = _initialObstacles();
     atePoison = false;
+    ateQuickly = false;
     portals = portalsForLevel(level);
 
     // Food
@@ -456,11 +494,19 @@ class SnakeEngine {
       return;
     }
 
+    // A timed run ends when the clock does, wherever the snake is and
+    // whatever it was about to reach.
+    if (mode.isTimed && elapsedMs >= timeAttackMs) {
+      phase = GamePhase.gameOver;
+      return;
+    }
+
     justAte = false;
     lastEatenFood = null;
     levelJustAdvanced = false;
     justSurvivedCloseCall = false;
     atePoison = false;
+    ateQuickly = false;
     // Whether the tick about to run is the one the snake was given to
     // save itself. Read before the flag is cleared for this tick.
     final wasHeld = graceHeld;
@@ -689,11 +735,18 @@ class SnakeEngine {
 
     switch (eaten.type) {
       case FoodType.apple:
+        // Read before the combo is updated, because it is the gap since
+        // the *previous* apple that decides this.
+        ateQuickly = mode.isTimed && elapsedMs - lastEatMs <= quickEatMs;
         foodsEaten++;
         totalApplesEaten++;
         applesInLevel++;
-        final points = (pointsPerFood * comboMultiplier * scoreMultiplier)
-            .round();
+        final points =
+            (pointsPerFood *
+                    comboMultiplier *
+                    scoreMultiplier *
+                    (ateQuickly ? 2 : 1))
+                .round();
         score += points;
         _updateCombo();
         _checkSpeedIncrease();
