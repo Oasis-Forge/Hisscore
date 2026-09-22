@@ -220,7 +220,7 @@ RELEASE.md                      pre-launch checklist: read it before shipping
   the PNGs.
 - **The pixel font `PressStart2P` has almost no glyphs beyond ASCII.** No check marks or emoji in UI
   text (the share text is separate and does use emoji). Use plain ASCII like `[X]`. **This is the
-  first thing localisation will hit** — see section 9.
+  first reason the app is English only** — see section 9 and the decisions log in ROADMAP.md.
 - `0` and `O` look alike in that font, which is why challenge codes use Crockford base32.
 - **The first tap after a dialog closes is often eaten** on the emulator: `screen`, then retry. And
   do not send `key back` from the menu: it leaves the app.
@@ -259,21 +259,22 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 The release is deliberately **last**: everything below lands first, then one version bump covers the
 lot.
 
-1. **Languages.** The app is English-only and every string is a literal in a widget. This is the
-   next piece of work. Two things to know going in: `PressStart2P` has almost no glyphs beyond
-   ASCII, so any language needing accents or a non-Latin script needs a second font and a decision
-   about where the pixel look stops; and the UI is laid out for short, upper-case English, so
-   longer translations will need the layouts revisited (the daily card and the pickup legend are the
-   tightest). `flutter_localizations` + ARB files is the default path.
-2. **The rest of the roadmap.** In rough order of value: server-side score verification (the input
-   log is done, the Cloud Function is not), restricting the Firebase API key, an opt-out for score
-   submission, tappable seed links, then phase 5's multiplayer items.
-3. **Ads** (decided): AdMob, `google_mobile_ads`, consent (UMP), and the privacy/store updates. The
+**The app is English only, decided 2026-09-22.** That is a decision, not a backlog item — the pixel
+face has almost no glyphs beyond ASCII and the look is most of what the game is. Do not
+half-extract strings into a bundle nobody will translate. See ROADMAP.md.
+
+1. **The rest of the roadmap.** In rough order of value: an opt-out for score submission,
+   restricting the Firebase API key, server-side score verification (the input log is done, the
+   Cloud Function is not), tappable seed links, then phase 5's three multiplayer items.
+2. **Ads** (decided): AdMob, `google_mobile_ads`, consent (UMP), and the privacy/store updates. The
    placement is already built — the second-chance card is a button with a countdown ring precisely
    so the ring can become the "watch an ad" wait without the card changing.
-4. **Then the release.** `RELEASE.md` section by section. The parts nobody else can do: play it on a
+3. **Then the release.** `RELEASE.md` section by section. The parts nobody else can do: play it on a
    real phone (sound, haptics, the rating prompt), back up the keystore, take store screenshots,
    fill in the Data safety form, and decide whether iOS is a target at all.
+
+Some of the above cannot be done from this repo alone: verification needs the Firebase Blaze plan,
+the key restriction needs the Google Cloud console, and ads need an AdMob account.
 
 ## 10. Known issues and untested edges
 

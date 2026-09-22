@@ -14,7 +14,7 @@ now a record rather than a to-do list; this file is the source of truth again.
 
 **Nothing has been released yet.** Version is still `1.0.1+2` and `CHANGELOG.md` holds 18 entries
 under `Unreleased`: the whole fun track is meant to go out as one release. The agreed order is
-**languages, then the rest of this roadmap, then the release** — see section 9 of the handoff.
+**the rest of this roadmap, then the release** — see section 9 of the handoff.
 
 ## Phase 1: First impression and shareability: DONE
 
@@ -78,12 +78,13 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
 
 ## Cross-cutting
 
-- [ ] **Languages.** The app is English-only and every string is a literal in a widget. **This is
-      the next piece of work.** Two things to know going in: `PressStart2P` has almost no glyphs
-      beyond ASCII, so anything needing accents or a non-Latin script needs a second font and a
-      decision about where the pixel look stops; and the UI is laid out for short upper-case
-      English, so longer translations will need the layouts revisited — the daily card and the
-      pickup legend are the tightest. `flutter_localizations` + ARB files is the default path.
+- [~] **Languages: English only, decided 2026-09-22.** Not a "not yet" — a decision. The look is
+      the product: `PressStart2P` has almost no glyphs beyond ASCII, so any language with accents
+      or a non-Latin script needs a second font, and the pixel face is most of what the game is.
+      The UI is also laid out for short upper-case English; the daily card and the pickup legend
+      are already tight. If this is ever revisited, the font question has to be settled first, and
+      `flutter_localizations` + ARB files is the path. **Until then, keep strings as they are** —
+      do not half-extract them into a bundle nobody will translate.
 - [x] **Extract a `GameSession` controller from `lib/ui/game_page.dart`** (#42). The page was 1,339
       lines; it is 598 now, and everything phase 5 has shipped so far hooks into the session.
 - [x] CI stays green: format check, analyze, tests, Android release build, web build
@@ -105,7 +106,7 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
       no release workflow, no tags, no GitHub Releases. A Play-ready `app-release.aab`,
       signed with the real upload key, builds locally and is uploaded by hand
       (`RELEASE.md` section 3). Still needed: keystore backup, screenshots, store forms.
-      **Deliberately last**: languages and the roadmap items above land first, and one version
+      **Deliberately last**: the roadmap items above land first, and one version
       bump covers the lot.
 
 ## Decisions log
@@ -120,4 +121,5 @@ under `Unreleased`: the whole fun track is meant to go out as one release. The a
 | 2026-09-20 | Nothing is released from GitHub; builds are local and uploaded by hand |
 | 2026-09-22 | The whole fun track ships as one release, so version bumps were collected, not taken per PR |
 | 2026-09-22 | A daily no longer posts to its mode's all-time board: every week bends the rules, so a daily score is not a plain one |
-| 2026-09-22 | Order of remaining work: languages, then the rest of this roadmap, then the release |
+| 2026-09-22 | English only. The pixel font has almost no glyphs beyond ASCII and the look is the product |
+| 2026-09-22 | Order of remaining work: the rest of this roadmap, then the release |
