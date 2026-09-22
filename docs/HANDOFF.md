@@ -176,6 +176,14 @@ RELEASE.md                      pre-launch checklist: read it before shipping
 
 - **Package id:** `com.oasisforge.<appname>` for every app. Hisscore was renamed from
   `com.hisscore.hisscore` before it was ever published. Once an id is on Play it can never change.
+- **`main` is protected: branch the moment you have pulled, not when you are ready to commit.**
+  A pull request is required, the three CI checks must pass, and force pushes and deletions are
+  refused — **including for admins**, deliberately, because the one direct push that got through
+  (#52's commit, 2026-09-22) carried an owner token and nothing else would have stopped it. The gap
+  between `git pull` on `main` and `git checkout -b` is where that happened, which is why the rule
+  is "branch after the pull" rather than "branch before the PR". A direct push now fails with
+  `protected branch hook declined`. To inspect or change it:
+  `gh api repos/Oasis-Forge/Hisscore/branches/main/protection`.
 - **One theme per PR, branched from a freshly pulled `main`.** Add files by path
   (`git add Hisscore/lib ...`) rather than `git add -A` when Flutter has rewritten
   `Hisscore/linux/flutter/generated_*` locally. `Hisscore/pubspec.lock` is *not* noise: if you
